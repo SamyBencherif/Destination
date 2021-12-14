@@ -16,6 +16,8 @@ For example objects titled "SOLID*", signifiying any string that starts with the
 
 Any other object that does not match the naming conventions above are consider to be decorative objects, for example high detail models, or lighting.
 
+## Tandem Game
+
 This project is beginning to resemble a Game Engine, so in order to keep me from getting distracted by the needs of a full game engine (high abstraction, resource management, scene composition tools, etc) I will try to focus my effort by developing a game in tandom with this template. My hope is that the template will be useable for the creation of many different games that are First-Person physics-y / walking sims while taking out redudant tasks such as perfecting the player controller.
 
 All that being said, now it's time to think about the game I want to develop in tandem ! I had a dream this morning about an official Portal 3 game that did not suck that much. At first I was skeptical of it, but then I found that it did capture fairly well what the modding community had been after. In the dream they introduced some new mechanics involving mobile robots. I might inspire the tandem game off of my dreamlike remix of Portal--or I may go back in the direction of walking sim type games such as Beginner's Guide or Stanely Parable. 
