@@ -1,5 +1,9 @@
 # GameWorldsWorkshop-HackNC2021
 
+Update ! On a whim I've decided to constain the renderer to pixel art and shadeless materials:
+
+![pixel_renderer_preview](https://user-images.githubusercontent.com/10871454/155649429-79fed0f4-f73e-458c-9534-fc4d310b94f6.png)
+
 Note to self: Consider this alternative for physics! https://chandlerprall.github.io/Physijs/
 
 Preliminary notes for continued development.
