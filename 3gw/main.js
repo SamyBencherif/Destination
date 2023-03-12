@@ -3,7 +3,7 @@
                   MAIN PROGRAM     
 
   file_name: main.js
-     author: Samie B (change this)
+     author: Samie B
 description: This is the main program of the game.
 
 This program is responsible for the following
@@ -18,15 +18,37 @@ This program is responsible for the following
 - Custom game logic
 - Custom overlay rendering
 *************************************************/
+/*
+Significant changes from user-concept
+
+- remove GLTF loader, in favor of imperative scene defintion
+  - removes need for prefixed object names SOLID*, DETECTOR*, etc
+  - better organization of Detector (trigger) functions
+- removed overlay, which was poorly generated from GLTF scene
+
+*/
+
+import * as THREE from './ext/THREE/three.module.js';
+import { PointerLockControls } from './ext/THREE/jsm/controls/PointerLockControls.js';
+import Stats from './ext/THREE/jsm/libs/stats.module.js'
 
 // todo :
 // fine tune player controller
 // + ground test for jump
 // + ground test for influence
-// clean up code
 
-var dt = 1/60; 
+let container, stats;
+let camera, controls, scene, renderer;
 
+var player_height = 3;
+
+const clock = new THREE.Clock();
+
+/* Cannon Physics */
+
+var moveRight, moveLeft, moveBackward, moveForward
+
+/*
 // Maximum amount of physics objects
 var N=40;
 
@@ -43,7 +65,7 @@ var quaternions = new Float32Array(N*4);
 var sizes = new Float32Array(N*3);
 
 // Create worker
-var worker = new Worker("physics.js");
+var worker = new Worker("./3gw/physics.js");
 worker.postMessage = worker.webkitPostMessage || worker.postMessage;
 
 // Time when we sent last message
@@ -139,99 +161,6 @@ function sendDataToWorker(){
 
 const root=document.location.href.replace(/\/[^/]*$/,"/")
 
-import * as THREE from './build/three.module.js';
-window.THREE = THREE;
-
-import Stats from './jsm/libs/stats.module.js';
-
-import { FirstPersonControls } from './jsm/controls/FirstPersonControls.js';
-import { OrbitControls } from './jsm/controls/OrbitControls.js';
-import { PointerLockControls } from './jsm/controls/PointerLockControls.js';
-import { TransformControls } from './jsm/controls/TransformControls.js';
-
-import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
-
-let container, stats;
-let camera, controls, scene, renderer;
-let mesh, texture;
-
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-const onUpPosition = new THREE.Vector2();
-const onDownPosition = new THREE.Vector2();
-
-var transformControl;
-
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
-let requestJump = false;
-
-var player_height = 3;
-
-let prevTime = performance.now();
-const direction = new THREE.Vector3();
-
-const clock = new THREE.Clock();
-
-init();
-animate();
-
-// Pointer-Lock controls (hopefully feels like conventional First Person controls)
-function PLConfig()
-{
-  controls = new PointerLockControls( camera, renderer.domElement );
-  document.body.addEventListener( 'click' , ()=>{controls.lock()});
-  const onKeyDown = function ( event ) {
-    switch ( event.code ) {
-      case 'ArrowUp':
-      case 'KeyW':
-        moveForward = true;
-        break;
-      case 'ArrowLeft':
-      case 'KeyA':
-        moveLeft = true;
-        break;
-      case 'ArrowDown':
-      case 'KeyS':
-        moveBackward = true;
-        break;
-      case 'ArrowRight':
-      case 'KeyD':
-        moveRight = true;
-        break;
-      case 'Space':
-        requestJump = false;
-        break;
-    }
-  };
-
-  const onKeyUp = function ( event ) {
-    switch ( event.code ) {
-      case 'ArrowUp':
-      case 'KeyW':
-        moveForward = false;
-        break;
-      case 'ArrowLeft':
-      case 'KeyA':
-        moveLeft = false;
-        break;
-      case 'ArrowDown':
-      case 'KeyS':
-        moveBackward = false;
-        break;
-      case 'ArrowRight':
-      case 'KeyD':
-        moveRight = false;
-        break;
-    }
-  };
-
-  document.addEventListener( 'keydown', onKeyDown );
-  document.addEventListener( 'keyup', onKeyUp );
-}
-
 var testerD;
 
 function saveTransformToBuffers(mesh, index)
@@ -296,10 +225,94 @@ function initPhysics()
   
   sendDataToWorker()
 }
+*/
+
+/* End Cannon Physics */
+
+/* THREE Scene Setup */
+
+// Pointer-Lock controls (hopefully feels like conventional First Person controls)
+function PLConfig()
+{
+  controls = new PointerLockControls( camera, renderer.domElement );
+  document.body.addEventListener( 'click' , ()=>{controls.lock()});
+  const onKeyDown = function ( event ) {
+    switch ( event.code ) {
+      case 'ArrowUp':
+      case 'KeyW':
+        moveForward = true;
+        break;
+      case 'ArrowLeft':
+      case 'KeyA':
+        moveLeft = true;
+        break;
+      case 'ArrowDown':
+      case 'KeyS':
+        moveBackward = true;
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        moveRight = true;
+        break;
+      case 'Space':
+        requestJump = false;
+        break;
+    }
+  };
+
+  const onKeyUp = function ( event ) {
+    switch ( event.code ) {
+      case 'ArrowUp':
+      case 'KeyW':
+        moveForward = false;
+        break;
+      case 'ArrowLeft':
+      case 'KeyA':
+        moveLeft = false;
+        break;
+      case 'ArrowDown':
+      case 'KeyS':
+        moveBackward = false;
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        moveRight = false;
+        break;
+    }
+  };
+
+  document.addEventListener( 'keydown', onKeyDown );
+  document.addEventListener( 'keyup', onKeyUp );
+}
+
+function generateTexture(w, h, pixfunc) {
+
+  const canvas = document.createElement( 'canvas' );
+  canvas.width = w;
+  canvas.height = h;
+
+  const context = canvas.getContext( '2d' );
+  const image = context.getImageData( 0, 0, w, h );
+
+  for ( let i = 0, j = 0, l = image.data.length; i < l; i += 4, j ++ ) {
+    var color = pixfunc(~~(i/4) % w, ~~((i/4) / w))
+    image.data[ i ] = color[0];
+    image.data[ i + 1 ] = color[1];
+    image.data[ i + 2 ] = color[2];
+    image.data[ i + 3 ] = color[3];
+  }
+
+  context.putImageData( image, 0, 0 );
+  
+  var tex = new THREE.Texture( canvas );
+  tex.needsUpdate = true;
+  return tex;
+
+}
 
 function init() {
 
-  container = document.getElementById( 'container' );
+  container = document.querySelector( 'body' );
 
   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
   window.camera = camera;
@@ -317,66 +330,22 @@ function init() {
   camera.position.set( 0, player_height, 0 );
 
   // look direction
-  camera.lookAt( 33.74, 3.782, 0.0 );
-
-  // load scene from file
-  const loader = new GLTFLoader();
-  
-  function processObj(obj)
-  {
-
-    if (obj.type == "Mesh")
-    {
-      if (obj.name.toLowerCase().startsWith("detector"))
-      {
-        // this would be a good time to apply a custom material to each detector:
-        // ...
-        obj.visible = false;
-
-        // (for right now, detectors only show up in the minimap)
-        detectors.push(obj);
-      }
-      else
-        meshes.push(obj);
-    }
-    
-    for (var child of obj.children)
-      processObj(child);
-      
-    if (meshes.length > N)
-    {
-      console.error("Maximum meshes exceeded. Please increase the maximum amount.");
-    }
-  }
-  
-  loader.load('scene.gltf',
-  function (gltf)
-  {            
-    // here gltf scene is loaded
-    scene.add(gltf.scene)
-    
-    for (var child of scene.children)
-    {
-      processObj(child);
-    }
-    initPhysics();
-    
-  });
-  ////
+  camera.lookAt( 0, player_height, 1 );
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio( window.devicePixelRatio );
   renderer.setSize( window.innerWidth, window.innerHeight );
   container.appendChild( renderer.domElement );
 
-  stats = new Stats();
   // (optional) FPS Monitor
-  //container.appendChild( stats.dom );
+  stats = new Stats();
+  container.appendChild( stats.dom );
 
   // Controller Configuration
   PLConfig();
 
-  initOverlays();
+  var pointLight = new THREE.PointLight( 0xffffff, 1 );
+  scene.add( pointLight );
 
   window.addEventListener( 'resize', onWindowResize );
 }
@@ -393,163 +362,76 @@ function onWindowResize() {
 
 }
 
-var ocanvas, octx, owidth, oheight;
-function initOverlays()
-{
-  // we may not use the same canvas for THREE and overlays
-  // so we will create one with transparency to go on top
-  ocanvas = document.createElement("canvas");
-  octx = ocanvas.getContext('2d');
-  window.ocanvas = ocanvas;
-  window.octx = octx;
-
-  // place canvas on top of everything
-  ocanvas.style.position = "absolute";
-  ocanvas.style.width = owidth+"px";
-  ocanvas.style.height = oheight+"px";
-  ocanvas.style.top = "0px";
-  ocanvas.style.left = "0px";
-
-  // canvas size
-  owidth = 250;
-  oheight = 250;
-  ocanvas.width = owidth;
-  ocanvas.height = oheight;
-
-  ocanvas.style.opacity = "40%";
-
-  document.body.appendChild(ocanvas);
-}
-
-function drawOverlays(time,delta)
-{
-  octx.clearRect(0,0,owidth,oheight);
-
-  octx.save();
-
-  // make transform suitable for rendering area, keep player centered
-  octx.translate(owidth/2, oheight/2);
-  octx.scale(4,4);
-  octx.translate(-camera.position.x, -camera.position.z);
-
-  // draw map world
-  octx.fillStyle = "#FFF";
-  for (var i=0; i<meshes.length-1; i++)
-  {
-    octx.save();
-
-    // this for-loop does not include the last mesh because that one is the
-    // dynamic mesh used for the player's physics
-    var mesh = meshes[i];
-
-    // copy parts of mesh's 3D transformation into context's 2D transformation
-    octx.translate(mesh.position.x, mesh.position.z);
-    octx.rotate(mesh.rotation.y);
-    octx.scale(mesh.scale.x, mesh.scale.z);
-
-    // draw centered rectangle (using transformation defined above)
-    octx.fillRect(-.5,-.5,1,1);
-
-    // restore transformation
-    octx.restore();
-  }
-
-  // repeat the same thing for detectors
-  octx.fillStyle = "#00FF00FF";
-  for (var i=0; i<detectors.length; i++)
-  {
-    // save context's 2D (identity) transformation
-    octx.save();
-
-    // this for-loop does not include the last mesh because that one is the
-    // dynamic mesh used for the player's physics
-    var mesh = detectors[i];
-
-    // copy parts of mesh's 3D transformation into context's 2D transformation
-    octx.translate(mesh.position.x, mesh.position.z);
-    octx.rotate(mesh.rotation.y);
-    octx.scale(mesh.scale.x, mesh.scale.z);
-
-    // draw centered rectangle (using transformation defined above)
-    octx.fillRect(-.5,-.5,1,1);
-
-    // restore transformation
-    octx.restore();
-  }
-
-  // draw player
-  octx.fillStyle = "rgba(241, 187, 134, .8)";
-  octx.fillRect(camera.position.x-1, camera.position.z-1, 2, 2);
-
-  octx.restore();
-}
-
-var rotationAxis = new THREE.Vector3();
-
-function findMesh(name)
-{
-  for (var i=0; i<meshes.length-1; i++)
-  {
-    if (meshes[i].name == name) return i;
-  }
-}
-window.findMesh = findMesh;
-
 function animate() {
 
   requestAnimationFrame( animate );
 
-  const time = performance.now();
-  const delta = ( time - prevTime ) / 1000;
-
-  drawOverlays(time, delta)
-
-  // animated transform
-  /*
-  This value is set soon before rendering so the physics step will not
-  have a chance to overwrite with the default value.
-  */
-  if (findMesh("Torus"))
-  {
-    meshes[findMesh("Torus")].rotation.y = time/1000;
-  }
-
   render();
   stats.update();
-  prevTime = time;
 }
-
 
 function render() {
 
   if (controls.update)
     controls.update( clock.getDelta() );
-
   renderer.render( scene, camera );
+}
+
+/* END THREE SCENE SETUP */
+
+/* MODULE */
+
+function prism(x0, y0, z0, x1, y1, z1, texture)
+{
+  const geometry = new THREE.BoxGeometry(x1-x0, y1-y0, z1-z0);
+  const mat = new THREE.MeshBasicMaterial( { map: texture } );
+  const mesh = new THREE.Mesh( geometry, mat );
+
+  mesh.position.x = (x0+x1)/2;
+  mesh.position.y = (y0+y1)/2;
+  mesh.position.z = (z0+z1)/2;
+
+  scene.add( mesh );
+  return mesh
+}
+
+function trigger()
+{
+
+}
+
+function interactive()
+{
+
+}
+
+function solidcolor(color)
+{
+  return generateTexture(4, 4, (x,y)=>color)
+}
+
+function stripes(color0, color1, size, traverseDir)
+{
+  if (!traverseDir) traverseDir = [1,1]
+  return generateTexture(1024, 1024, (x,y)=>[color0, color1][~~((traverseDir[0]*x+traverseDir[1]*y)/size)%2])
+}
+
+function checkerboard(color0, color1, size)
+{
+  return generateTexture(1024, 1024, (x,y)=>[color0, color1][(~~(x/size)+~~(y/size))%2])
+}
+
+function player()
+{
   
 }
 
-function onPointerDown( event ) {
+init();
+animate();
 
-  onDownPosition.x = event.clientX;
-  onDownPosition.y = event.clientY;
+var objects = {prism, trigger, interactive}
+var textures = {solidcolor, stripes, checkerboard}
 
-}
+export {objects, textures, player}
 
-function onPointerUp() {
-
-  onUpPosition.x = event.clientX;
-  onUpPosition.y = event.clientY;
-
-  if ( onDownPosition.distanceTo( onUpPosition ) === 0 ) transformControl.detach();
-
-}
-
-function onPointerMove( event ) {
-
-  pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-  pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-  // useful for clickable objects:
-  //raycaster.setFromCamera( pointer, camera );
-}
+/* END MODULE */
