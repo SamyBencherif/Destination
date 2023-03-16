@@ -11,7 +11,7 @@ This program is responsible for the following
 - Importing the GLTF Scene
 - Creating a THREE.js scene
 - Sending scene data to physics thread
-- Continuously receiving from physics thread the position of dynamic object: testerD
+- Continuously receiving from physics thread the position of dynamic object: playerBody
 - Continuously sending camera orientation to physics thread
 - Taking input and sending to physics thread
 - Handling mouse and window events
@@ -48,21 +48,16 @@ const clock = new THREE.Clock();
 
 var moveRight, moveLeft, moveBackward, moveForward
 
-/*
 // Maximum amount of physics objects
 var N=40;
 
-var static_N = 0;
-var dynamic_N = 0;
-var detector_N = 0;
-window.static_N = ()=>static_N;
-window.dynamic_N = ()=>dynamic_N;
-window.detector_N = ()=>detector_N;
-
-// Data arrays. Contains all our kinematic data we need for rendering.
-var positions = new Float32Array(N*3);
-var quaternions = new Float32Array(N*4);
-var sizes = new Float32Array(N*3);
+// Data array containing all our kinematic data we need for rendering.
+// float1 - object type: static(0), dynamic(1), trigger(2)
+// float3 - position
+// float4 - quaternion
+// float3 - scale
+// adds up to 11 32bit entries per transform
+var data = new Float32Array(N*11)
 
 // Create worker
 var worker = new Worker("./3gw/physics.js");
@@ -71,10 +66,10 @@ worker.postMessage = worker.webkitPostMessage || worker.postMessage;
 // Time when we sent last message
 var sendTime; 
 
+var index=0;
+
 var meshes = [];
 var detectors = [];
-window.meshes = meshes;
-window.detectors = detectors;
 
 // callback for messages from CANNON physics
 worker.onmessage = function(e) {
@@ -85,47 +80,31 @@ worker.onmessage = function(e) {
   sizes = e.data.sizes;
 
   // Update dynamic body
-  {
-    var i = static_N
-    meshes[i].position.set( positions[3*i+0],
-                positions[3*i+1],
-                positions[3*i+2] );
-    meshes[i].quaternion.set(quaternions[4*i+0],
-                 quaternions[4*i+1],
-                 quaternions[4*i+2],
-                 quaternions[4*i+3]);
-    meshes[i].scale.set(sizes[3*i+0],
-                 sizes[3*i+1],
-                 sizes[3*i+2]);
-  }
-
-  for (var d of e.data.detections)
-  {
-    if (meshes[d].name.toLowerCase().startsWith("detector"))
-    {
-      if (d == 24)
-      {
-        // set the background to dark
-        scene.background.set(0);
-      }
-      else
-      {
-        // we can use console.log to figure the value of d
-      }
-    }
-  }
+  // {
+  //   var i = static_N
+  //   meshes[i].position.set( positions[3*i+0],
+  //               positions[3*i+1],
+  //               positions[3*i+2] );
+  //   meshes[i].quaternion.set(quaternions[4*i+0],
+  //                quaternions[4*i+1],
+  //                quaternions[4*i+2],
+  //                quaternions[4*i+3]);
+  //   meshes[i].scale.set(sizes[3*i+0],
+  //                sizes[3*i+1],
+  //                sizes[3*i+2]);
+  // }
 
   // If the worker was faster than the time step (dt seconds), we want to delay the next timestep
-  var delay = dt * 1000 - (Date.now()-sendTime);
+  var delay = clock.getDelta() * 1000 - (Date.now()-sendTime);
   if(delay < 0){
     delay = 0;
   }
   setTimeout(()=>{
 
-  // rotate testerD
+  // rotate playerBody
 
   // send rotation information to dynamic mesh
-  if (testerD)
+  if (playerBody)
   {
     // get position of dynamic mesh and set camera relative
     var phy = meshes[static_N].position;
@@ -150,18 +129,18 @@ function sendDataToWorker(){
   worker.postMessage({
     N : N,
     static_N, dynamic_N, detector_N,
-    dt : dt,
-    cannonUrl : document.location.href.replace(/\/[^/]*$/,"/") + "../build/cannon.js",
+    dt : clock.getDelta(),
+    cannonUrl : document.location.href.replace(/\/[^/]*$/,"/") + "./3gw/ext/cannon.js",
     positions : positions,
     quaternions : quaternions,
     sizes: sizes,
-    input: {moveRight,moveLeft,moveForward,moveBackward}
+    input: {moveRight, moveLeft, moveForward, moveBackward}
   },[positions.buffer, quaternions.buffer, sizes.buffer]);
 }
 
 const root=document.location.href.replace(/\/[^/]*$/,"/")
 
-var testerD;
+var playerBody;
 
 function saveTransformToBuffers(mesh, index)
 {
@@ -180,52 +159,22 @@ function saveTransformToBuffers(mesh, index)
   sizes[3*i+2] = mesh.scale.z;
 }
 
-// this is just a shorter form of the function above
-function saveTransform(index)
-{
-  return saveTransformToBuffers(meshes[index], index);
-}
-window.saveTransform = saveTransform;
-
 function initPhysics()
 {
-  // STATIC OBJECTS
-  // attaching each object ensures its transform is not relative to a parent
-  // our physics system does not understand relative transforms
-  for (var obj of meshes)
-  {
-    scene.attach(obj);
-    static_N++;
-  }
-  
   // DYNAMIC OBJECT (1)
   // tester dynamic object
-  testerD = new THREE.Mesh( new THREE.SphereGeometry( 1 ), new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-  testerD.name = "Player"
+  playerBody = new THREE.Mesh( new THREE.SphereGeometry( 1 ), new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
+  playerBody.name = "Player"
   // spawn point + <0,1,0>
-  testerD.position.set(0,1,0);
-  window.testerD = testerD;
-  meshes.push(testerD);
+  playerBody.position.set(camera.position.x, camera.position.y, camera.position.z);
+  saveTransformToBuffers(playerBody)
+  index++;
+
   // we have exactly one dynamic object: the player
   dynamic_N = 1;
 
-  for (var d of detectors)
-  {
-    detector_N++;
-    meshes.push(d);
-  }
-   
-  // prepare all meshes for use by the physics thread
-  for (var i=0; i<static_N; i++)
-    saveTransform(i);
-  for (var i=0; i<dynamic_N; i++)
-    saveTransform(static_N+i);
-  for (var i=0; i<detector_N; i++)
-    saveTransform(static_N+dynamic_N+i);
-  
   sendDataToWorker()
 }
-*/
 
 /* End Cannon Physics */
 
@@ -315,8 +264,6 @@ function init() {
   container = document.querySelector( 'body' );
 
   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
-  window.camera = camera;
-  
   scene = new THREE.Scene();
 
   // make this name available from the console
@@ -391,6 +338,9 @@ function prism(x0, y0, z0, x1, y1, z1, texture)
   mesh.position.y = (y0+y1)/2;
   mesh.position.z = (z0+z1)/2;
 
+  saveTransformToBuffers(mesh, index);
+  index++;
+
   scene.add( mesh );
   return mesh
 }
@@ -428,6 +378,7 @@ function player()
 
 init();
 animate();
+initPhysics();
 
 var objects = {prism, trigger, interactive}
 var textures = {solidcolor, stripes, checkerboard}

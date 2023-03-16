@@ -10,8 +10,8 @@ player(0,0,0, 0,0,1)
 
 // create solid, textured ground surface
 var ground = objects.prism(
-  -10, 0, -10,
-  10, 0, 10,
+  -10, -10, -10,
+  10, -8, 10,
   textures.checkerboard([255,255,255,255], [0,0,0,255], 128) 
 )
 

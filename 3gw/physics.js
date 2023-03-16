@@ -6,63 +6,67 @@ var world;
 
 const walkStrength = 50;
 
+function init(e)
+{
+  // Load cannon.js
+  importScripts(e.data.cannonUrl);
+
+  // Init physics solver
+  world = new CANNON.World();
+  world.broadphase = new CANNON.NaiveBroadphase();
+  world.gravity.set(0,-10,0);
+  world.solver.tolerance = 0.001;
+
+  var standardPhysicsMaterial = new CANNON.Material({
+    friction: 0.14
+  })
+
+  var body_count = e.data.static_N+e.data.dynamic_N+e.data.detector_N;
+  // physics body init
+  for(var i=0; i<body_count; i++){
+
+    // Create box (representing solid collider for each scene item)
+    var shape, body;          
+
+    // the first object after statics is dynamic/player
+    if (i == e.data.static_N) 
+    {
+      body = new CANNON.Body({ mass: 1, fixedRotation: true, material: standardPhysicsMaterial });
+
+      // player body is oversized to prevent clipping
+      // normally there would be a factor of 1/2 here
+      shape = new CANNON.Sphere(e.data.sizes[3*i]); 
+    }
+    // static bodies
+    else 
+    {
+      body = new CANNON.Body({ mass: 0 , material: standardPhysicsMaterial });
+      shape = new CANNON.Box(new CANNON.Vec3(
+        Math.abs(e.data.sizes[3*i]/2),
+        Math.abs(e.data.sizes[3*i+1]/2),
+        Math.abs(e.data.sizes[3*i+2]/2)
+      ));
+    }
+    
+    if (i >= e.data.static_N+e.data.dynamic_N) // dynamics & detectors
+    {
+      // turn off collisions
+      shape.collisionResponse = false;
+    }
+      
+    body.addShape(shape);
+    body.position.set(e.data.positions[3*i],e.data.positions[3*i+1],e.data.positions[3*i+2]);
+    body.quaternion.set(e.data.quaternions[4*i],e.data.quaternions[4*i+1],e.data.quaternions[4*i+2],e.data.quaternions[4*i+3]);
+    world.addBody(body);
+  }
+}
+
 self.onmessage = function(e) {
 
-  // *** First message only *** //
+  // *** Configure world on first message *** //
   if (e.data.cannonUrl && !world) {
-    // Load cannon.js
-    importScripts(e.data.cannonUrl);
-
-    // Init physics solver
-    world = new CANNON.World();
-    world.broadphase = new CANNON.NaiveBroadphase();
-    world.gravity.set(0,-10,0);
-    world.solver.tolerance = 0.001;
-
-    var standardPhysicsMaterial = new CANNON.Material({
-      friction: 0.14
-    })
-
-    var body_count = e.data.static_N+e.data.dynamic_N+e.data.detector_N;
-    // physics body init
-    for(var i=0; i<body_count; i++){
-    
-      // Create box (representing solid collider for each scene item)
-      var shape, body;          
-    
-      // the first object after statics is dynamic/player
-      if (i == e.data.static_N) 
-      {
-        body = new CANNON.Body({ mass: 1, fixedRotation: true, material: standardPhysicsMaterial });
-
-        // player body is oversized to prevent clipping
-        // normally there would be a factor of 1/2 here
-        shape = new CANNON.Sphere(e.data.sizes[3*i]); 
-      }
-      // static bodies
-      else 
-      {
-        body = new CANNON.Body({ mass: 0 , material: standardPhysicsMaterial });
-        shape = new CANNON.Box(new CANNON.Vec3(
-          Math.abs(e.data.sizes[3*i]/2),
-          Math.abs(e.data.sizes[3*i+1]/2),
-          Math.abs(e.data.sizes[3*i+2]/2)
-        ));
-      }
-      
-      if (i >= e.data.static_N+e.data.dynamic_N) // dynamics & detectors
-      {
-        // turn off collisions
-        shape.collisionResponse = false;
-      }
-        
-      body.addShape(shape);
-      body.position.set(e.data.positions[3*i],e.data.positions[3*i+1],e.data.positions[3*i+2]);
-      body.quaternion.set(e.data.quaternions[4*i],e.data.quaternions[4*i+1],e.data.quaternions[4*i+2],e.data.quaternions[4*i+3]);
-      world.addBody(body);
-    }
+    init(e)
   }
-  // *** End first message only *** //
 
   // pull main thread updates on player object
   var i = e.data.static_N;
