@@ -16,7 +16,6 @@ This program is responsible for the following
 - Taking input and sending to physics thread
 - Handling mouse and window events
 - Custom game logic
-- Custom overlay rendering
 *************************************************/
 /*
 Significant changes from user-concept
@@ -49,15 +48,21 @@ const clock = new THREE.Clock();
 var moveRight, moveLeft, moveBackward, moveForward
 
 // Maximum amount of physics objects
-var N=40;
+const N=40;
+const pb_size = 11
 
-// Data array containing all our kinematic data we need for rendering.
-// float1 - object type: static(0), dynamic(1), trigger(2)
+const OBJ_TYPE_STATIC  = 0;
+const OBJ_TYPE_DYNAMIC = 1;
+const OBJ_TYPE_TRIGGER = 2;
+const OBJ_TYPE_PLAYER  = 3;
+
+// Shared memory between this and physics thread
+// float1 - object type: static(0), dynamic(1), trigger(2), player(3)
 // float3 - position
 // float4 - quaternion
 // float3 - scale
-// adds up to 11 32bit entries per transform
-var data = new Float32Array(N*11)
+// adds pb_size entries per transform
+var physicsBodies = new Float32Array(N*pb_size)
 
 // Create worker
 var worker = new Worker("./3gw/physics.js");
@@ -68,37 +73,47 @@ var sendTime;
 
 var index=0;
 
+// three.js objects corresponding to physicsBodies
 var meshes = [];
-var detectors = [];
+
+const root=document.location.href.replace(/\/[^/]*$/,"/")
+
+var playerBody;
+var playerIndex;
 
 // callback for messages from CANNON physics
 worker.onmessage = function(e) {
 
-  // Get fresh data from the worker
-  positions = e.data.positions;
-  quaternions = e.data.quaternions;
-  sizes = e.data.sizes;
+  // Get data from the worker
+  physicsBodies = e.data.physicsBodies
 
-  // Update dynamic body
-  // {
-  //   var i = static_N
-  //   meshes[i].position.set( positions[3*i+0],
-  //               positions[3*i+1],
-  //               positions[3*i+2] );
-  //   meshes[i].quaternion.set(quaternions[4*i+0],
-  //                quaternions[4*i+1],
-  //                quaternions[4*i+2],
-  //                quaternions[4*i+3]);
-  //   meshes[i].scale.set(sizes[3*i+0],
-  //                sizes[3*i+1],
-  //                sizes[3*i+2]);
-  // }
-
-  // If the worker was faster than the time step (dt seconds), we want to delay the next timestep
-  var delay = clock.getDelta() * 1000 - (Date.now()-sendTime);
-  if(delay < 0){
-    delay = 0;
+  // Update dynamic bodies and player
+  for (var i=0; i<physicsBodies.length; i++)
+  {
+    if (physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC || physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER)
+    {
+       meshes[i].position.set( 
+         physicsBodies[pb_size*i+1],
+         physicsBodies[pb_size*i+2],
+         physicsBodies[pb_size*i+3]
+       );
+       meshes[i].quaternion.set(
+          physicsBodies[pb_size*i+4],
+          physicsBodies[pb_size*i+5],
+          physicsBodies[pb_size*i+6],
+          physicsBodies[pb_size*i+7]
+       );
+       meshes[i].scale.set(
+          physicsBodies[pb_size*i+8],
+          physicsBodies[pb_size*i+9],
+          physicsBodies[pb_size*i+10]
+       );
+    }
   }
+
+  // If the worker was faster than the time step (dt seconds), we want to delay the next timestep (? why)
+  var delay = clock.getDelta() * 1000 - (Date.now()-sendTime);
+  if(delay < 0) delay = 0;
   setTimeout(()=>{
 
   // rotate playerBody
@@ -107,7 +122,7 @@ worker.onmessage = function(e) {
   if (playerBody)
   {
     // get position of dynamic mesh and set camera relative
-    var phy = meshes[static_N].position;
+    var phy = meshes[player_index].position;
     camera.position.set(phy.x, phy.y+player_height, phy.z);
     
     // using Euler is easier than Quaternions !!!
@@ -116,8 +131,14 @@ worker.onmessage = function(e) {
     e.x = e.z = 0;
 
     // create the quaternion then load that into the data bus
-    meshes[static_N].quaternion.setFromEuler(e);
-    saveTransformToBuffers(meshes[static_N], static_N);
+    // ie take camera rotation from this thread and get ready to move it to physics thread
+    meshes[player_index].quaternion.setFromEuler(e);
+    playerBody[pb_size*player_index+4] = mesh[player_index].quaternion.x
+    playerBody[pb_size*player_index+5] = mesh[player_index].quaternion.y
+    playerBody[pb_size*player_index+6] = mesh[player_index].quaternion.z
+    playerBody[pb_size*player_index+7] = mesh[player_index].quaternion.w
+    
+    // the three.js mesh seems unnecessary ...
   }
 
   sendDataToWorker();
@@ -131,49 +152,38 @@ function sendDataToWorker(){
     static_N, dynamic_N, detector_N,
     dt : clock.getDelta(),
     cannonUrl : document.location.href.replace(/\/[^/]*$/,"/") + "./3gw/ext/cannon.js",
-    positions : positions,
-    quaternions : quaternions,
-    sizes: sizes,
+    physicsBodies,
     input: {moveRight, moveLeft, moveForward, moveBackward}
   },[positions.buffer, quaternions.buffer, sizes.buffer]);
 }
 
-const root=document.location.href.replace(/\/[^/]*$/,"/")
-
-var playerBody;
-
-function saveTransformToBuffers(mesh, index)
+function saveTransformToBuffer(mesh, objectType)
 {
   var i=index;
-  positions[3*i+0] = mesh.position.x;
-  positions[3*i+1] = mesh.position.y;
-  positions[3*i+2] = mesh.position.z;
-          
-  quaternions[4*i+0] = mesh.quaternion.x;
-  quaternions[4*i+1] = mesh.quaternion.y;
-  quaternions[4*i+2] = mesh.quaternion.z;
-  quaternions[4*i+3] = mesh.quaternion.w;
   
-  sizes[3*i+0] = mesh.scale.x;
-  sizes[3*i+1] = mesh.scale.y;
-  sizes[3*i+2] = mesh.scale.z;
-}
-
-function initPhysics()
-{
-  // DYNAMIC OBJECT (1)
-  // tester dynamic object
-  playerBody = new THREE.Mesh( new THREE.SphereGeometry( 1 ), new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-  playerBody.name = "Player"
-  // spawn point + <0,1,0>
-  playerBody.position.set(camera.position.x, camera.position.y, camera.position.z);
-  saveTransformToBuffers(playerBody)
+  if (i >= N) {
+    console.warn("Exceeded maximum number of physics bodies.")
+    return;
+  }
+  
+  if (objectType == OBJ_TYPE_PLAYER) playerIndex = i;
+  
+  physicsBodies[pb_size*i+0] = objectType;
+  
+  physicsBodies[pb_size*i+1] = mesh.position.x;
+  physicsBodies[pb_size*i+2] = mesh.position.y;
+  physicsBodies[pb_size*i+3] = mesh.position.z;
+          
+  physicsBodies[pb_size*i+4] = mesh.quaternion.x;
+  physicsBodies[pb_size*i+5] = mesh.quaternion.y;
+  physicsBodies[pb_size*i+6] = mesh.quaternion.z;
+  physicsBodies[pb_size*i+7] = mesh.quaternion.w;
+  
+  physicsBodies[pb_size*i+8] = mesh.scale.x;
+  physicsBodies[pb_size*i+9] = mesh.scale.y;
+  physicsBodies[pb_size*i+10] = mesh.scale.z;
   index++;
-
-  // we have exactly one dynamic object: the player
-  dynamic_N = 1;
-
-  sendDataToWorker()
+  
 }
 
 /* End Cannon Physics */
@@ -295,6 +305,13 @@ function init() {
   scene.add( pointLight );
 
   window.addEventListener( 'resize', onWindowResize );
+  
+  playerBody = new THREE.Mesh( new THREE.SphereGeometry( 1 ), new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
+  playerBody.name = "Player"
+  playerBody.position.set(camera.position.x, camera.position.y, camera.position.z);
+  saveTransformToBuffer(playerBody, OBJ_TYPE_PLAYER)
+
+  sendDataToWorker()
 }
 
 function onWindowResize() {
@@ -309,19 +326,12 @@ function onWindowResize() {
 
 }
 
-function animate() {
-
-  requestAnimationFrame( animate );
-
-  render();
-  stats.update();
-}
-
 function render() {
-
+  requestAnimationFrame(render);
   if (controls.update)
     controls.update( clock.getDelta() );
   renderer.render( scene, camera );
+  stats.update();
 }
 
 /* END THREE SCENE SETUP */
@@ -338,8 +348,7 @@ function prism(x0, y0, z0, x1, y1, z1, texture)
   mesh.position.y = (y0+y1)/2;
   mesh.position.z = (z0+z1)/2;
 
-  saveTransformToBuffers(mesh, index);
-  index++;
+  saveTransformToBuffer(mesh, OBJ_TYPE_STATIC);
 
   scene.add( mesh );
   return mesh
@@ -377,8 +386,7 @@ function player()
 }
 
 init();
-animate();
-initPhysics();
+render();
 
 var objects = {prism, trigger, interactive}
 var textures = {solidcolor, stripes, checkerboard}
