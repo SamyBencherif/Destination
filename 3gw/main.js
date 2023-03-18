@@ -11,7 +11,6 @@ This program is responsible for the following
 - Importing the GLTF Scene
 - Creating a THREE.js scene
 - Sending scene data to physics thread
-- Continuously receiving from physics thread the position of dynamic object: playerBody
 - Continuously sending camera orientation to physics thread
 - Taking input and sending to physics thread
 - Handling mouse and window events
@@ -45,7 +44,7 @@ const clock = new THREE.Clock();
 
 /* Cannon Physics */
 
-var moveRight, moveLeft, moveBackward, moveForward
+var moveRight, moveLeft, moveBackward, moveForward, moveUp, moveDown
 
 // Maximum amount of physics objects
 const N=40;
@@ -78,7 +77,6 @@ var meshes = [];
 
 const root=document.location.href.replace(/\/[^/]*$/,"/")
 
-var playerBody;
 var playerIndex;
 
 // callback for messages from CANNON physics
@@ -88,58 +86,53 @@ worker.onmessage = function(e) {
   physicsBodies = e.data.physicsBodies
 
   // Update dynamic bodies and player
-  for (var i=0; i<physicsBodies.length; i++)
+  for (var i=0; i<meshes.length; i++)
   {
-    if (physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC || physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER)
+    if (physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER)
     {
-       meshes[i].position.set( 
-         physicsBodies[pb_size*i+1],
-         physicsBodies[pb_size*i+2],
-         physicsBodies[pb_size*i+3]
-       );
-       meshes[i].quaternion.set(
-          physicsBodies[pb_size*i+4],
-          physicsBodies[pb_size*i+5],
-          physicsBodies[pb_size*i+6],
-          physicsBodies[pb_size*i+7]
-       );
-       meshes[i].scale.set(
-          physicsBodies[pb_size*i+8],
-          physicsBodies[pb_size*i+9],
-          physicsBodies[pb_size*i+10]
-       );
+      var player_index = i;
+      
+      meshes[i].position.set( 
+        physicsBodies[pb_size*i+1],
+        physicsBodies[pb_size*i+2] + player_height,
+        physicsBodies[pb_size*i+3]
+      );
+    }
+    else
+    {
+      meshes[i].position.set( 
+        physicsBodies[pb_size*i+1],
+        physicsBodies[pb_size*i+2],
+        physicsBodies[pb_size*i+3]
+      );
+      meshes[i].quaternion.set(
+        physicsBodies[pb_size*i+4],
+        physicsBodies[pb_size*i+5],
+        physicsBodies[pb_size*i+6],
+        physicsBodies[pb_size*i+7]
+     );
     }
   }
 
-  // If the worker was faster than the time step (dt seconds), we want to delay the next timestep (? why)
+  // If the worker was faster than the time step (dt seconds), we want to delay the next timestep
+  // to keep from needlessly overworking the physics thread
   var delay = clock.getDelta() * 1000 - (Date.now()-sendTime);
   if(delay < 0) delay = 0;
   setTimeout(()=>{
 
-  // rotate playerBody
+  // Euler is easier than Quaternions !!!
+  var e = new THREE.Euler(0,0,0,'YXZ');
+  e.setFromQuaternion( camera.quaternion );
+  e.x = e.z = 0;
 
-  // send rotation information to dynamic mesh
-  if (playerBody)
-  {
-    // get position of dynamic mesh and set camera relative
-    var phy = meshes[player_index].position;
-    camera.position.set(phy.x, phy.y+player_height, phy.z);
-    
-    // using Euler is easier than Quaternions !!!
-    var e = new THREE.Euler(0,0,0,'YXZ');
-    e.setFromQuaternion( camera.quaternion );
-    e.x = e.z = 0;
+  var q = new THREE.Quaternion()
+  q.setFromEuler(e)
 
-    // create the quaternion then load that into the data bus
-    // ie take camera rotation from this thread and get ready to move it to physics thread
-    meshes[player_index].quaternion.setFromEuler(e);
-    playerBody[pb_size*player_index+4] = mesh[player_index].quaternion.x
-    playerBody[pb_size*player_index+5] = mesh[player_index].quaternion.y
-    playerBody[pb_size*player_index+6] = mesh[player_index].quaternion.z
-    playerBody[pb_size*player_index+7] = mesh[player_index].quaternion.w
-    
-    // the three.js mesh seems unnecessary ...
-  }
+  // send camera rotation to physics thread
+  physicsBodies[pb_size*player_index+4] = q.x
+  physicsBodies[pb_size*player_index+5] = q.y
+  physicsBodies[pb_size*player_index+6] = q.z
+  physicsBodies[pb_size*player_index+7] = q.w
 
   sendDataToWorker();
   },delay);
@@ -148,13 +141,12 @@ worker.onmessage = function(e) {
 function sendDataToWorker(){
   sendTime = Date.now();
   worker.postMessage({
-    N : N,
-    static_N, dynamic_N, detector_N,
+    N : meshes.length,
     dt : clock.getDelta(),
     cannonUrl : document.location.href.replace(/\/[^/]*$/,"/") + "./3gw/ext/cannon.js",
     physicsBodies,
-    input: {moveRight, moveLeft, moveForward, moveBackward}
-  },[positions.buffer, quaternions.buffer, sizes.buffer]);
+    input: {moveRight, moveLeft, moveForward, moveBackward, moveUp, moveDown}
+  },[physicsBodies.buffer]);
 }
 
 function saveTransformToBuffer(mesh, objectType)
@@ -182,6 +174,9 @@ function saveTransformToBuffer(mesh, objectType)
   physicsBodies[pb_size*i+8] = mesh.scale.x;
   physicsBodies[pb_size*i+9] = mesh.scale.y;
   physicsBodies[pb_size*i+10] = mesh.scale.z;
+
+  meshes.push(mesh);
+
   index++;
   
 }
@@ -214,8 +209,13 @@ function PLConfig()
         moveRight = true;
         break;
       case 'Space':
-        requestJump = false;
+        moveUp = true;
         break;
+      case 'ShiftLeft':
+        moveDown = true;
+        break;
+      // default:
+      // console.log(event.code)
     }
   };
 
@@ -236,6 +236,12 @@ function PLConfig()
       case 'ArrowRight':
       case 'KeyD':
         moveRight = false;
+        break;
+      case 'Space':
+        moveUp = false;
+        break;
+      case 'ShiftLeft':
+        moveDown = false;
         break;
     }
   };
@@ -278,16 +284,17 @@ function init() {
 
   // make this name available from the console
   window.scene = scene;
+  window.camera = camera;
   
   // background color
   // navyblue - 0x070434
   scene.background = new THREE.Color( 0xE4AEA1 );
 
   // spawn point
-  camera.position.set( 0, player_height, 0 );
+  camera.position.set( 0, 0, 0 );
 
   // look direction
-  camera.lookAt( 0, player_height, 1 );
+  camera.lookAt( 0, 0, 1 );
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio( window.devicePixelRatio );
@@ -306,12 +313,8 @@ function init() {
 
   window.addEventListener( 'resize', onWindowResize );
   
-  playerBody = new THREE.Mesh( new THREE.SphereGeometry( 1 ), new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-  playerBody.name = "Player"
-  playerBody.position.set(camera.position.x, camera.position.y, camera.position.z);
-  saveTransformToBuffer(playerBody, OBJ_TYPE_PLAYER)
-
-  sendDataToWorker()
+  // create player physics representation
+  saveTransformToBuffer(camera, OBJ_TYPE_PLAYER)
 }
 
 function onWindowResize() {
@@ -340,13 +343,17 @@ function render() {
 
 function prism(x0, y0, z0, x1, y1, z1, texture)
 {
-  const geometry = new THREE.BoxGeometry(x1-x0, y1-y0, z1-z0);
+  const geometry = new THREE.BoxGeometry();
   const mat = new THREE.MeshBasicMaterial( { map: texture } );
   const mesh = new THREE.Mesh( geometry, mat );
 
   mesh.position.x = (x0+x1)/2;
   mesh.position.y = (y0+y1)/2;
   mesh.position.z = (z0+z1)/2;
+
+  mesh.scale.x = x1-x0; 
+  mesh.scale.y = y1-y0;
+  mesh.scale.z = z1-z0;
 
   saveTransformToBuffer(mesh, OBJ_TYPE_STATIC);
 
@@ -382,7 +389,7 @@ function checkerboard(color0, color1, size)
 
 function player()
 {
-  
+  sendDataToWorker()
 }
 
 init();
