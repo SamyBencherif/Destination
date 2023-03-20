@@ -34,18 +34,18 @@ function init(e)
   for(var i=0; i<body_count; i++){
 
     // Create box (representing solid collider for each scene item)
-    var shape, body;          
+    var shape, body;      
 
     if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER)
     {
       body = new CANNON.Body({ mass: 1, fixedRotation: true, material: standardPhysicsMaterial });
-      shape = new CANNON.Sphere(2*e.data.physicsBodies[pb_size*i+8]); 
+      shape = new CANNON.Sphere(1); 
     }
     
     // static bodies
     if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_STATIC)
     {
-      body = new CANNON.Body({ material: standardPhysicsMaterial, type: CANNON.Body.STATIC });
+      body = new CANNON.Body({ mass: 0, material: standardPhysicsMaterial});
       shape = new CANNON.Box(new CANNON.Vec3(
         Math.abs(e.data.physicsBodies[pb_size*i+8]/2),
         Math.abs(e.data.physicsBodies[pb_size*i+9]/2),
@@ -54,7 +54,8 @@ function init(e)
     }
     
     // dynamic bodies
-    if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC)
+    if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC ||
+      e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_TRIGGER)
     {
       body = new CANNON.Body({ mass: .3 , material: standardPhysicsMaterial });
       shape = new CANNON.Box(new CANNON.Vec3(
@@ -67,6 +68,7 @@ function init(e)
     if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_TRIGGER)
     {
       shape.collisionResponse = false;
+      shape.type = CANNON.Body.STATIC;
     }
       
     body.addShape(shape);
@@ -106,7 +108,6 @@ self.onmessage = function(e) {
       if (e.data.input.moveDown)
         world.bodies[i].applyLocalForce(new CANNON.Vec3(0, -walkStrength, 0), new CANNON.Vec3(0, 1, 0));
 
-
       // if player fell off edge of world
       if (world.bodies[i].position.y < -100) 
       {
@@ -117,9 +118,10 @@ self.onmessage = function(e) {
 
   // Step the world
   world.step(e.data.dt);
-  
+
   // write positions, quaternions to buffers
-  for(var i=0; i<e.data.N; i++){
+  for (var i=0; i<e.data.N; i++) 
+  {
     var b = world.bodies[i],
     p = b.position,
     q = b.quaternion;

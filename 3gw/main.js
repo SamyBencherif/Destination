@@ -74,6 +74,7 @@ var index=0;
 
 // three.js objects corresponding to physicsBodies
 var meshes = [];
+window.meshes = meshes
 
 const root=document.location.href.replace(/\/[^/]*$/,"/")
 
@@ -98,7 +99,7 @@ worker.onmessage = function(e) {
         physicsBodies[pb_size*i+3]
       );
     }
-    else
+    else if (physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC)
     {
       meshes[i].position.set( 
         physicsBodies[pb_size*i+1],
@@ -119,23 +120,22 @@ worker.onmessage = function(e) {
   var delay = clock.getDelta() * 1000 - (Date.now()-sendTime);
   if(delay < 0) delay = 0;
   setTimeout(()=>{
+    // Euler is easier than Quaternions !!!
+    var e = new THREE.Euler(0,0,0,'YXZ');
+    e.setFromQuaternion( camera.quaternion );
+    e.x = e.z = 0;
 
-  // Euler is easier than Quaternions !!!
-  var e = new THREE.Euler(0,0,0,'YXZ');
-  e.setFromQuaternion( camera.quaternion );
-  e.x = e.z = 0;
+    var q = new THREE.Quaternion()
+    q.setFromEuler(e)
 
-  var q = new THREE.Quaternion()
-  q.setFromEuler(e)
+    // send camera rotation to physics thread
+    physicsBodies[pb_size*player_index+4] = q.x
+    physicsBodies[pb_size*player_index+5] = q.y
+    physicsBodies[pb_size*player_index+6] = q.z
+    physicsBodies[pb_size*player_index+7] = q.w
 
-  // send camera rotation to physics thread
-  physicsBodies[pb_size*player_index+4] = q.x
-  physicsBodies[pb_size*player_index+5] = q.y
-  physicsBodies[pb_size*player_index+6] = q.z
-  physicsBodies[pb_size*player_index+7] = q.w
-
-  sendDataToWorker();
-  },delay);
+    sendDataToWorker();
+  }, delay);
 }
 
 function sendDataToWorker(){
@@ -288,7 +288,8 @@ function init() {
   
   // background color
   // navyblue - 0x070434
-  scene.background = new THREE.Color( 0xE4AEA1 );
+  // salmon - 0xE4AEA1
+  scene.background = new THREE.Color( 0x070434 );
 
   // spawn point
   camera.position.set( 0, 0, 0 );
@@ -366,9 +367,24 @@ function trigger()
 
 }
 
-function interactive()
+function interactive(x, y, z, texture)
 {
+  const geometry = new THREE.BoxGeometry();
+  const mat = new THREE.MeshBasicMaterial( { map: texture } );
+  const mesh = new THREE.Mesh( geometry, mat );
 
+  mesh.position.x = x;
+  mesh.position.y = y;
+  mesh.position.z = z;
+
+  mesh.scale.x = 1; 
+  mesh.scale.y = 1;
+  mesh.scale.z = 1;
+
+  saveTransformToBuffer(mesh, OBJ_TYPE_DYNAMIC);
+
+  scene.add( mesh );
+  return mesh
 }
 
 function solidcolor(color)
