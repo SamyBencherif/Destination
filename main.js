@@ -135,12 +135,12 @@ function initCannon(){
     sphereBody.linearDamping = 0.9;
     world.addBody(sphereBody);
 
-    // Create a plane
-    var groundShape = new CANNON.Plane();
-    var groundBody = new CANNON.Body({ mass: 0 });
-    groundBody.addShape(groundShape);
-    groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
-    world.addBody(groundBody);
+    // // Create a plane
+    // var groundShape = new CANNON.Plane();
+    // var groundBody = new CANNON.Body({ mass: 0 });
+    // groundBody.addShape(groundShape);
+    // groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
+    // world.addBody(groundBody);
 }
 
 function init() {
@@ -150,7 +150,7 @@ function init() {
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog( 0x000000, 0, 500 );
 
-    var ambient = new THREE.AmbientLight( 0x111111 );
+    var ambient = new THREE.AmbientLight( 0x333333 );
     scene.add( ambient );
 
     light = new THREE.SpotLight( 0xffffff );
@@ -399,7 +399,28 @@ function trigger()
 
 function interactive(x, y, z, texture)
 {
+    const material = new THREE.MeshBasicMaterial( { map: texture } );
 
+    var halfExtents = new CANNON.Vec3(.5, .5, .5);
+    var boxShape = new CANNON.Box(halfExtents);
+    var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
+    
+    var boxBody = new CANNON.Body({ mass: 5 });
+    boxBody.addShape(boxShape);
+    var boxMesh = new THREE.Mesh(boxGeometry, material);
+    world.addBody(boxBody);
+    scene.add(boxMesh);
+    
+    boxBody.position.set(x, y, z);
+    boxMesh.position.set(x, y, z);
+
+    boxMesh.castShadow = true;
+    boxMesh.receiveShadow = true;
+
+    boxes.push(boxBody);
+    boxMeshes.push(boxMesh);
+
+    return boxMesh
 }
 
 function solidcolor(color)
