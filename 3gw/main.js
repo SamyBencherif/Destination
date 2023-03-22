@@ -40,8 +40,6 @@ let camera, controls, scene, renderer;
 
 var player_height = 3;
 
-const clock = new THREE.Clock();
-
 /* Cannon Physics */
 
 var moveRight, moveLeft, moveBackward, moveForward, moveUp, moveDown
@@ -80,6 +78,15 @@ const root=document.location.href.replace(/\/[^/]*$/,"/")
 
 var playerIndex;
 
+var lastTime = Date.now()
+
+function getDelta()
+{
+  var delta = (Date.now()-lastTime)/1000;
+  return delta || 1/60
+}
+window.getDelta = getDelta
+
 // callback for messages from CANNON physics
 worker.onmessage = function(e) {
 
@@ -99,9 +106,9 @@ worker.onmessage = function(e) {
         physicsBodies[pb_size*i+3]
       );
     }
-    else if (physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC)
+    else
     {
-      meshes[i].position.set( 
+      meshes[i].position.set(
         physicsBodies[pb_size*i+1],
         physicsBodies[pb_size*i+2],
         physicsBodies[pb_size*i+3]
@@ -117,7 +124,7 @@ worker.onmessage = function(e) {
 
   // If the worker was faster than the time step (dt seconds), we want to delay the next timestep
   // to keep from needlessly overworking the physics thread
-  var delay = clock.getDelta() * 1000 - (Date.now()-sendTime);
+  var delay = getDelta() * 1000 - (Date.now()-sendTime);
   if(delay < 0) delay = 0;
   setTimeout(()=>{
     // Euler is easier than Quaternions !!!
@@ -142,7 +149,7 @@ function sendDataToWorker(){
   sendTime = Date.now();
   worker.postMessage({
     N : meshes.length,
-    dt : clock.getDelta(),
+    dt : getDelta(),
     cannonUrl : document.location.href.replace(/\/[^/]*$/,"/") + "./3gw/ext/cannon.js",
     physicsBodies,
     input: {moveRight, moveLeft, moveForward, moveBackward, moveUp, moveDown}
@@ -292,7 +299,7 @@ function init() {
   scene.background = new THREE.Color( 0x070434 );
 
   // spawn point
-  camera.position.set( 0, 0, 0 );
+  camera.position.set( 0, 2, 0 );
 
   // look direction
   camera.lookAt( 0, 0, 1 );
@@ -333,9 +340,10 @@ function onWindowResize() {
 function render() {
   requestAnimationFrame(render);
   if (controls.update)
-    controls.update( clock.getDelta() );
+    controls.update( getDelta() );
   renderer.render( scene, camera );
   stats.update();
+  lastTime = Date.now()
 }
 
 /* END THREE SCENE SETUP */
@@ -357,7 +365,6 @@ function prism(x0, y0, z0, x1, y1, z1, texture)
   mesh.scale.z = z1-z0;
 
   saveTransformToBuffer(mesh, OBJ_TYPE_STATIC);
-
   scene.add( mesh );
   return mesh
 }

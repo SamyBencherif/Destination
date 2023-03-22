@@ -11,7 +11,7 @@ var ground = objects.prism(
 
 // create solid floating cubes
 objects.prism(5, 5, 5, 6, 6, 6, textures.stripes([200, 0, 200, 255], [40, 0, 200, 255], 256))
-objects.prism(4, 5, 5, 5, 6, 6, textures.solidcolor([0, 255, 0, 100]))
+objects.prism(3, 5, 5, 4, 6, 6, textures.solidcolor([0, 255, 0, 100]))
 
 var retexGround = (entity)=>{
   ground.texture = textures.checkerboard([255, 0, 0, 255], [0, 0, 255, 255], 5)

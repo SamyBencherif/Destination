@@ -21,7 +21,7 @@ function init(e)
   // Init physics solver
   world = new CANNON.World();
   world.broadphase = new CANNON.NaiveBroadphase();
-  world.gravity.set(0, 0, 0);
+  world.gravity.set(0, -10, 0);
   world.solver.tolerance = 0.001;
 
   var standardPhysicsMaterial = new CANNON.Material({
@@ -34,18 +34,20 @@ function init(e)
   for(var i=0; i<body_count; i++){
 
     // Create box (representing solid collider for each scene item)
-    var shape, body;      
+    var shape, body;
 
-    if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER)
+    var isPlayer = e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER;
+    var isTrigger = e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_TRIGGER;
+    var isStatic = e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_STATIC;
+    var isDynamic = e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC;
+
+    if (isPlayer)
     {
-      body = new CANNON.Body({ mass: 1, fixedRotation: true, material: standardPhysicsMaterial });
+      body = new CANNON.Body({ mass: 1, fixedRotation: true, });
       shape = new CANNON.Sphere(1); 
     }
-    
-    // static bodies
-    if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_STATIC)
+    else
     {
-      body = new CANNON.Body({ mass: 0, material: standardPhysicsMaterial});
       shape = new CANNON.Box(new CANNON.Vec3(
         Math.abs(e.data.physicsBodies[pb_size*i+8]/2),
         Math.abs(e.data.physicsBodies[pb_size*i+9]/2),
@@ -53,23 +55,16 @@ function init(e)
       ));
     }
     
-    // dynamic bodies
-    if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC ||
-      e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_TRIGGER)
-    {
-      body = new CANNON.Body({ mass: .3 , material: standardPhysicsMaterial });
-      shape = new CANNON.Box(new CANNON.Vec3(
-        Math.abs(e.data.physicsBodies[pb_size*i+8]/2),
-        Math.abs(e.data.physicsBodies[pb_size*i+9]/2),
-        Math.abs(e.data.physicsBodies[pb_size*i+10]/2)
-      ));
-    }
+    body = new CANNON.Body({ mass: 1,
+      type: (isTrigger || isStatic) ? CANNON.Body.STATIC : CANNON.Body.DYNAMIC
+    });
     
-    if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_TRIGGER)
-    {
-      shape.collisionResponse = false;
-      shape.type = CANNON.Body.STATIC;
-    }
+    if (isTrigger)
+      body.collisionResponse = false;
+
+    // if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_TRIGGER ||
+    //     e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_STATIC)
+    //   body.type = CANNON.Body.STATIC;
       
     body.addShape(shape);
     world.addBody(body);
@@ -81,18 +76,19 @@ self.onmessage = function(e) {
   // *** Configure world on first message *** //
   if (e.data.cannonUrl && !world) {
     init(e)
-  }
-
-  // pull main thread world updates
-  for (var i=0; i<e.data.N; i++)
-  {
-    world.bodies[i].position.set(e.data.physicsBodies[pb_size*i+1], e.data.physicsBodies[pb_size*i+2], e.data.physicsBodies[pb_size*i+3]);
-    world.bodies[i].quaternion.set(e.data.physicsBodies[pb_size*i+4], e.data.physicsBodies[pb_size*i+5], e.data.physicsBodies[pb_size*i+6], e.data.physicsBodies[pb_size*i+7]);
+    // pull main thread world updates
+    for (var i=0; i<e.data.N; i++)
+    {
+      world.bodies[i].position.set(e.data.physicsBodies[pb_size*i+1], e.data.physicsBodies[pb_size*i+2], e.data.physicsBodies[pb_size*i+3]);
+      world.bodies[i].quaternion.set(e.data.physicsBodies[pb_size*i+4], e.data.physicsBodies[pb_size*i+5], e.data.physicsBodies[pb_size*i+6], e.data.physicsBodies[pb_size*i+7]);
+    }
   }
   
+    
   for(var i=0; i<e.data.N; i++){
     if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER)
     {
+      world.bodies[i].quaternion.set(e.data.physicsBodies[pb_size*i+4], e.data.physicsBodies[pb_size*i+5], e.data.physicsBodies[pb_size*i+6], e.data.physicsBodies[pb_size*i+7]);
       /* PLAYER CUSTOM PHYSICS */
 
       if (e.data.input.moveLeft)
@@ -107,11 +103,15 @@ self.onmessage = function(e) {
         world.bodies[i].applyLocalForce(new CANNON.Vec3(0, walkStrength, 0), new CANNON.Vec3(0, 1, 0));
       if (e.data.input.moveDown)
         world.bodies[i].applyLocalForce(new CANNON.Vec3(0, -walkStrength, 0), new CANNON.Vec3(0, 1, 0));
+        
+      // player anti-gravity
+      // world.bodies[i].applyLocalForce(new CANNON.Vec3(0, 10, 0), new CANNON.Vec3(0, 1, 0));
 
       // if player fell off edge of world
       if (world.bodies[i].position.y < -100) 
       {
         world.bodies[i].position.set(0, 2, 0);
+        world.bodies[i].velocity.set(0, 0, 0);
       }
     }
   }
@@ -126,17 +126,13 @@ self.onmessage = function(e) {
     p = b.position,
     q = b.quaternion;
     
-    if (e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_PLAYER ||
-      e.data.physicsBodies[pb_size*i+0] == OBJ_TYPE_DYNAMIC)
-    {
-      e.data.physicsBodies[pb_size*i+1] = p.x;
-      e.data.physicsBodies[pb_size*i+2] = p.y;
-      e.data.physicsBodies[pb_size*i+3] = p.z;
-      e.data.physicsBodies[pb_size*i+4] = q.x;
-      e.data.physicsBodies[pb_size*i+5] = q.y;
-      e.data.physicsBodies[pb_size*i+6] = q.z;
-      e.data.physicsBodies[pb_size*i+7] = q.w;
-    }
+    e.data.physicsBodies[pb_size*i+1] = p.x;
+    e.data.physicsBodies[pb_size*i+2] = p.y;
+    e.data.physicsBodies[pb_size*i+3] = p.z;
+    e.data.physicsBodies[pb_size*i+4] = q.x;
+    e.data.physicsBodies[pb_size*i+5] = q.y;
+    e.data.physicsBodies[pb_size*i+6] = q.z;
+    e.data.physicsBodies[pb_size*i+7] = q.w;
   }
 
   var detections = [];
