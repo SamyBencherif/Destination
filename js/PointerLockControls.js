@@ -1,6 +1,7 @@
 /**
  * @author mrdoob / http://mrdoob.com/
  * @author schteppe / https://github.com/schteppe
+ * @author sbee / https://github.com/SamyBencherif
  */
  var PointerLockControls = function ( camera, cannonBody ) {
 
@@ -135,6 +136,20 @@
         quat.multiplyVector3(targetVec);
     }
 
+    function hyp(a,b)
+    {
+        return Math.sqrt(a*a+b*b)
+    }
+
+    this.setDirection = function(x,y,z){
+        pitchObject.rotation.x = Math.atan2(y, hyp(x, -z))
+        yawObject.rotation.y = Math.atan2(x, -z)
+        euler.x = pitchObject.rotation.x;
+        euler.y = yawObject.rotation.y;
+        euler.order = "XYZ";
+        quat.setFromEuler(euler);
+    }
+
     // Moves the camera to the Cannon.js object position and adds velocity to the object if the run key is down
     var inputVelocity = new THREE.Vector3();
     var euler = new THREE.Euler();
@@ -166,7 +181,6 @@
         euler.order = "XYZ";
         quat.setFromEuler(euler);
         inputVelocity.applyQuaternion(quat);
-        //quat.multiplyVector3(inputVelocity);
 
         // Add to the object
         velocity.x += inputVelocity.x;
