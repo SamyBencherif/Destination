@@ -11,16 +11,14 @@ var ground = prism(
 prism(5, 2, 5, 6, 3, 6, stripes([200, 0, 200, 255], [40, 0, 200, 255], 256))
 prism(3, 2, 5, 4, 3, 6, solidcolor([0, 255, 0, 100]))
 
-interactive(3,3,3, solidcolor([200, 40, 40, 255]))
+interactive(0,5,-3, solidcolor([200, 40, 40, 255]))
 
 // set player spawn point
-// position specifies where the player is standing
-// (ie just below bottom of controller)
-// optionally specify look direction, defaults to 0, 0, 1
-player(0, 0, 0, 0, 0, 1)
+// optionally specify look direction, defaults to 0, 0, -1
+player(0, 1.3, 0, 0, 0, -1)
 
-// var retexGround = (entity)=>{
-//   ground.texture = checkerboard([255, 0, 0, 255], [0, 0, 255, 255], 5)
-// }
+var retexGround = (entity)=>{
+  ground.texture = checkerboard([255, 0, 0, 255], [0, 0, 255, 255], 5)
+}
 // create transient invisible trigger zone
-//objects.trigger( -10, 6, -10, -3, 0, 10, false, retexGround)
+trigger( -10, .1, -10, -3, 6, 10, retexGround)
