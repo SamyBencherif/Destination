@@ -1,555 +1,385 @@
 
-/************************************************
-                  MAIN PROGRAM     
+var sphereShape, playerBody, world, physicsMaterial, walls=[], balls=[], ballMeshes=[], boxes=[], boxMeshes=[];
 
-  file_name: main.js
-     author: Samie B (change this)
-description: This is the main program of the game.
+var camera, scene, renderer;
+var geometry, material, mesh;
+var controls,time = Date.now();
 
-This program is responsible for the following
+var blocker = document.getElementById( 'blocker' );
+var instructions = document.getElementById( 'instructions' );
 
-- Importing the GLTF Scene
-- Creating a THREE.js scene
-- Sending scene data to physics thread
-- Continuously receiving from physics thread the position of dynamic object: testerD
-- Continuously sending camera orientation to physics thread
-- Taking input and sending to physics thread
-- Handling mouse and window events
-- Custom game logic
-- Custom overlay rendering
-*************************************************/
+var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
 
-// todo :
-// fine tune player controller
-// + ground test for jump
-// + ground test for influence
-// clean up code
+if ( havePointerLock ) {
 
-var dt = 1/60; 
+    var element = document.body;
 
-// Maximum amount of physics objects
-var N=40;
+    var pointerlockchange = function ( event ) {
 
-var static_N = 0;
-var dynamic_N = 0;
-var detector_N = 0;
-window.static_N = ()=>static_N;
-window.dynamic_N = ()=>dynamic_N;
-window.detector_N = ()=>detector_N;
+        if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
 
-// Data arrays. Contains all our kinematic data we need for rendering.
-var positions = new Float32Array(N*3);
-var quaternions = new Float32Array(N*4);
-var sizes = new Float32Array(N*3);
+            controls.enabled = true;
 
-// Create worker
-var worker = new Worker("physics.js");
-worker.postMessage = worker.webkitPostMessage || worker.postMessage;
+            blocker.style.display = 'none';
 
-// Time when we sent last message
-var sendTime; 
+        } else {
 
-var meshes = [];
-var detectors = [];
-window.meshes = meshes;
-window.detectors = detectors;
+            controls.enabled = false;
 
-// callback for messages from CANNON physics
-worker.onmessage = function(e) {
+            blocker.style.display = '-webkit-box';
+            blocker.style.display = '-moz-box';
+            blocker.style.display = 'box';
 
-  // Get fresh data from the worker
-  positions = e.data.positions;
-  quaternions = e.data.quaternions;
-  sizes = e.data.sizes;
+            instructions.style.display = '';
 
-  // Update dynamic body
-  {
-    var i = static_N
-    meshes[i].position.set( positions[3*i+0],
-                positions[3*i+1],
-                positions[3*i+2] );
-    meshes[i].quaternion.set(quaternions[4*i+0],
-                 quaternions[4*i+1],
-                 quaternions[4*i+2],
-                 quaternions[4*i+3]);
-    meshes[i].scale.set(sizes[3*i+0],
-                 sizes[3*i+1],
-                 sizes[3*i+2]);
-  }
+        }
 
-  for (var d of e.data.detections)
-  {
-    if (meshes[d].name.toLowerCase().startsWith("detector"))
-    {
-      if (d == 24)
-      {
-        // set the background to dark
-        scene.background.set(0);
-      }
-      else
-      {
-        // we can use console.log to figure the value of d
-      }
     }
-  }
 
-  // If the worker was faster than the time step (dt seconds), we want to delay the next timestep
-  var delay = dt * 1000 - (Date.now()-sendTime);
-  if(delay < 0){
-    delay = 0;
-  }
-  setTimeout(()=>{
+    var pointerlockerror = function ( event ) {
+        instructions.style.display = '';
+    }
 
-  // rotate testerD
+    // Hook pointer lock state change events
+    document.addEventListener( 'pointerlockchange', pointerlockchange, false );
+    document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
+    document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
 
-  // send rotation information to dynamic mesh
-  if (testerD)
-  {
-    // get position of dynamic mesh and set camera relative
-    var phy = meshes[static_N].position;
-    camera.position.set(phy.x, phy.y+player_height, phy.z);
-    
-    // using Euler is easier than Quaternions !!!
-    var e = new THREE.Euler(0,0,0,'YXZ');
-    e.setFromQuaternion( camera.quaternion );
-    e.x = e.z = 0;
+    document.addEventListener( 'pointerlockerror', pointerlockerror, false );
+    document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
+    document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
 
-    // create the quaternion then load that into the data bus
-    meshes[static_N].quaternion.setFromEuler(e);
-    saveTransformToBuffers(meshes[static_N], static_N);
-  }
+    instructions.addEventListener( 'click', function ( event ) {
+        instructions.style.display = 'none';
 
-  sendDataToWorker();
-  },delay);
+        // Ask the browser to lock the pointer
+        element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+
+        if ( /Firefox/i.test( navigator.userAgent ) ) {
+
+            var fullscreenchange = function ( event ) {
+
+                if ( document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element ) {
+
+                    document.removeEventListener( 'fullscreenchange', fullscreenchange );
+                    document.removeEventListener( 'mozfullscreenchange', fullscreenchange );
+
+                    element.requestPointerLock();
+                }
+
+            }
+
+            document.addEventListener( 'fullscreenchange', fullscreenchange, false );
+            document.addEventListener( 'mozfullscreenchange', fullscreenchange, false );
+
+            element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
+
+            element.requestFullscreen();
+
+        } else {
+
+            element.requestPointerLock();
+
+        }
+
+    }, false );
+
+} else {
+
+    instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
+
 }
 
-function sendDataToWorker(){
-  sendTime = Date.now();
-  worker.postMessage({
-    N : N,
-    static_N, dynamic_N, detector_N,
-    dt : dt,
-    cannonUrl : document.location.href.replace(/\/[^/]*$/,"/") + "../build/cannon.js",
-    positions : positions,
-    quaternions : quaternions,
-    sizes: sizes,
-    input: {moveRight,moveLeft,moveForward,moveBackward}
-  },[positions.buffer, quaternions.buffer, sizes.buffer]);
-}
-
-const root=document.location.href.replace(/\/[^/]*$/,"/")
-
-import * as THREE from './build/three.module.js';
-window.THREE = THREE;
-
-import Stats from './jsm/libs/stats.module.js';
-
-import { FirstPersonControls } from './jsm/controls/FirstPersonControls.js';
-import { OrbitControls } from './jsm/controls/OrbitControls.js';
-import { PointerLockControls } from './jsm/controls/PointerLockControls.js';
-import { TransformControls } from './jsm/controls/TransformControls.js';
-
-import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
-
-let container, stats;
-let camera, controls, scene, renderer;
-let mesh, texture;
-
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-const onUpPosition = new THREE.Vector2();
-const onDownPosition = new THREE.Vector2();
-
-var transformControl;
-
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
-let requestJump = false;
-
-var player_height = 3;
-
-let prevTime = performance.now();
-const direction = new THREE.Vector3();
-
-const clock = new THREE.Clock();
-
+initCannon();
 init();
 animate();
 
-// Pointer-Lock controls (hopefully feels like conventional First Person controls)
-function PLConfig()
-{
-  controls = new PointerLockControls( camera, renderer.domElement );
-  document.body.addEventListener( 'click' , ()=>{controls.lock()});
-  const onKeyDown = function ( event ) {
-    switch ( event.code ) {
-      case 'ArrowUp':
-      case 'KeyW':
-        moveForward = true;
-        break;
-      case 'ArrowLeft':
-      case 'KeyA':
-        moveLeft = true;
-        break;
-      case 'ArrowDown':
-      case 'KeyS':
-        moveBackward = true;
-        break;
-      case 'ArrowRight':
-      case 'KeyD':
-        moveRight = true;
-        break;
-      case 'Space':
-        requestJump = false;
-        break;
-    }
-  };
+function initCannon(){
+    // Setup our world
+    world = new CANNON.World();
+    world.quatNormalizeSkip = 0;
+    world.quatNormalizeFast = false;
 
-  const onKeyUp = function ( event ) {
-    switch ( event.code ) {
-      case 'ArrowUp':
-      case 'KeyW':
-        moveForward = false;
-        break;
-      case 'ArrowLeft':
-      case 'KeyA':
-        moveLeft = false;
-        break;
-      case 'ArrowDown':
-      case 'KeyS':
-        moveBackward = false;
-        break;
-      case 'ArrowRight':
-      case 'KeyD':
-        moveRight = false;
-        break;
-    }
-  };
+    var solver = new CANNON.GSSolver();
 
-  document.addEventListener( 'keydown', onKeyDown );
-  document.addEventListener( 'keyup', onKeyUp );
-}
+    world.defaultContactMaterial.contactEquationStiffness = 1e9;
+    world.defaultContactMaterial.contactEquationRelaxation = 4;
 
-var testerD;
+    solver.iterations = 7;
+    solver.tolerance = 0.1;
+    var split = true;
+    if(split)
+        world.solver = new CANNON.SplitSolver(solver);
+    else
+        world.solver = solver;
 
-function saveTransformToBuffers(mesh, index)
-{
-  var i=index;
-  positions[3*i+0] = mesh.position.x;
-  positions[3*i+1] = mesh.position.y;
-  positions[3*i+2] = mesh.position.z;
-          
-  quaternions[4*i+0] = mesh.quaternion.x;
-  quaternions[4*i+1] = mesh.quaternion.y;
-  quaternions[4*i+2] = mesh.quaternion.z;
-  quaternions[4*i+3] = mesh.quaternion.w;
-  
-  sizes[3*i+0] = mesh.scale.x;
-  sizes[3*i+1] = mesh.scale.y;
-  sizes[3*i+2] = mesh.scale.z;
-}
+    world.gravity.set(0,-20,0);
+    world.broadphase = new CANNON.NaiveBroadphase();
 
-// this is just a shorter form of the function above
-function saveTransform(index)
-{
-  return saveTransformToBuffers(meshes[index], index);
-}
-window.saveTransform = saveTransform;
+    // Create a slippery material (friction coefficient = 0.0)
+    physicsMaterial = new CANNON.Material("slipperyMaterial");
+    var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+                                                            physicsMaterial,
+                                                            0.0, // friction coefficient
+                                                            0.3  // restitution
+                                                            );
+    // We must add the contact materials to the world
+    world.addContactMaterial(physicsContactMaterial);
 
-function initPhysics()
-{
-  // STATIC OBJECTS
-  // attaching each object ensures its transform is not relative to a parent
-  // our physics system does not understand relative transforms
-  for (var obj of meshes)
-  {
-    scene.attach(obj);
-    static_N++;
-  }
-  
-  // DYNAMIC OBJECT (1)
-  // tester dynamic object
-  testerD = new THREE.Mesh( new THREE.SphereGeometry( 1 ), new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-  testerD.name = "Player"
-  // spawn point + <0,1,0>
-  testerD.position.set(0,1,0);
-  window.testerD = testerD;
-  meshes.push(testerD);
-  // we have exactly one dynamic object: the player
-  dynamic_N = 1;
-
-  for (var d of detectors)
-  {
-    detector_N++;
-    meshes.push(d);
-  }
-   
-  // prepare all meshes for use by the physics thread
-  for (var i=0; i<static_N; i++)
-    saveTransform(i);
-  for (var i=0; i<dynamic_N; i++)
-    saveTransform(static_N+i);
-  for (var i=0; i<detector_N; i++)
-    saveTransform(static_N+dynamic_N+i);
-  
-  sendDataToWorker()
+    // Create a sphere
+    var mass = 5, radius = 1.3;
+    sphereShape = new CANNON.Sphere(radius);
+    playerBody = new CANNON.Body({ mass: mass });
+    playerBody.addShape(sphereShape);
+    playerBody.position.set(0, 1.3, 0);
+    playerBody.linearDamping = 0.9;
+    world.addBody(playerBody);
 }
 
 function init() {
 
-  container = document.getElementById( 'container' );
+    camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
-  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
-  window.camera = camera;
-  
-  scene = new THREE.Scene();
+    scene = new THREE.Scene();
+    scene.fog = new THREE.Fog( 0x000000, 0, 500 );
 
-  // make this name available from the console
-  window.scene = scene;
-  
-  // background color
-  // navyblue - 0x070434
-  scene.background = new THREE.Color( 0xE4AEA1 );
+    controls = new PointerLockControls( camera , playerBody );
+    scene.add( controls.getObject() );
 
-  // spawn point
-  camera.position.set( 0, player_height, 0 );
+    renderer = new THREE.WebGLRenderer();
+    renderer.shadowMapEnabled = true;
+    renderer.shadowMapSoft = true;
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setClearColor( scene.fog.color, 1 );
 
-  // look direction
-  camera.lookAt( 33.74, 3.782, 0.0 );
+    document.body.appendChild( renderer.domElement );
 
-  // load scene from file
-  const loader = new GLTFLoader();
-  
-  function processObj(obj)
-  {
-
-    if (obj.type == "Mesh")
-    {
-      if (obj.name.toLowerCase().startsWith("detector"))
-      {
-        // this would be a good time to apply a custom material to each detector:
-        // ...
-        obj.visible = false;
-
-        // (for right now, detectors only show up in the minimap)
-        detectors.push(obj);
-      }
-      else
-        meshes.push(obj);
-    }
-    
-    for (var child of obj.children)
-      processObj(child);
-      
-    if (meshes.length > N)
-    {
-      console.error("Maximum meshes exceeded. Please increase the maximum amount.");
-    }
-  }
-  
-  loader.load('scene.gltf',
-  function (gltf)
-  {            
-    // here gltf scene is loaded
-    scene.add(gltf.scene)
-    
-    for (var child of scene.children)
-    {
-      processObj(child);
-    }
-    initPhysics();
-    
-  });
-  ////
-
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio( window.devicePixelRatio );
-  renderer.setSize( window.innerWidth, window.innerHeight );
-  container.appendChild( renderer.domElement );
-
-  stats = new Stats();
-  // (optional) FPS Monitor
-  //container.appendChild( stats.dom );
-
-  // Controller Configuration
-  PLConfig();
-
-  initOverlays();
-
-  window.addEventListener( 'resize', onWindowResize );
+    window.addEventListener( 'resize', onWindowResize, false );
 }
 
 function onWindowResize() {
-
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize( window.innerWidth, window.innerHeight );
-
-  if (controls.handleResize)
-    controls.handleResize();
-
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
-var ocanvas, octx, owidth, oheight;
-function initOverlays()
-{
-  // we may not use the same canvas for THREE and overlays
-  // so we will create one with transparency to go on top
-  ocanvas = document.createElement("canvas");
-  octx = ocanvas.getContext('2d');
-  window.ocanvas = ocanvas;
-  window.octx = octx;
-
-  // place canvas on top of everything
-  ocanvas.style.position = "absolute";
-  ocanvas.style.width = owidth+"px";
-  ocanvas.style.height = oheight+"px";
-  ocanvas.style.top = "0px";
-  ocanvas.style.left = "0px";
-
-  // canvas size
-  owidth = 250;
-  oheight = 250;
-  ocanvas.width = owidth;
-  ocanvas.height = oheight;
-
-  ocanvas.style.opacity = "40%";
-
-  document.body.appendChild(ocanvas);
-}
-
-function drawOverlays(time,delta)
-{
-  octx.clearRect(0,0,owidth,oheight);
-
-  octx.save();
-
-  // make transform suitable for rendering area, keep player centered
-  octx.translate(owidth/2, oheight/2);
-  octx.scale(4,4);
-  octx.translate(-camera.position.x, -camera.position.z);
-
-  // draw map world
-  octx.fillStyle = "#FFF";
-  for (var i=0; i<meshes.length-1; i++)
-  {
-    octx.save();
-
-    // this for-loop does not include the last mesh because that one is the
-    // dynamic mesh used for the player's physics
-    var mesh = meshes[i];
-
-    // copy parts of mesh's 3D transformation into context's 2D transformation
-    octx.translate(mesh.position.x, mesh.position.z);
-    octx.rotate(mesh.rotation.y);
-    octx.scale(mesh.scale.x, mesh.scale.z);
-
-    // draw centered rectangle (using transformation defined above)
-    octx.fillRect(-.5,-.5,1,1);
-
-    // restore transformation
-    octx.restore();
-  }
-
-  // repeat the same thing for detectors
-  octx.fillStyle = "#00FF00FF";
-  for (var i=0; i<detectors.length; i++)
-  {
-    // save context's 2D (identity) transformation
-    octx.save();
-
-    // this for-loop does not include the last mesh because that one is the
-    // dynamic mesh used for the player's physics
-    var mesh = detectors[i];
-
-    // copy parts of mesh's 3D transformation into context's 2D transformation
-    octx.translate(mesh.position.x, mesh.position.z);
-    octx.rotate(mesh.rotation.y);
-    octx.scale(mesh.scale.x, mesh.scale.z);
-
-    // draw centered rectangle (using transformation defined above)
-    octx.fillRect(-.5,-.5,1,1);
-
-    // restore transformation
-    octx.restore();
-  }
-
-  // draw player
-  octx.fillStyle = "rgba(241, 187, 134, .8)";
-  octx.fillRect(camera.position.x-1, camera.position.z-1, 2, 2);
-
-  octx.restore();
-}
-
-var rotationAxis = new THREE.Vector3();
-
-function findMesh(name)
-{
-  for (var i=0; i<meshes.length-1; i++)
-  {
-    if (meshes[i].name == name) return i;
-  }
-}
-window.findMesh = findMesh;
-
+var dt = 1/60;
 function animate() {
+    requestAnimationFrame( animate );
+    if(controls.enabled){
+        world.step(dt);
 
-  requestAnimationFrame( animate );
+        // Update ball positions
+        for(var i=0; i<balls.length; i++){
+            ballMeshes[i].position.copy(balls[i].position);
+            ballMeshes[i].quaternion.copy(balls[i].quaternion);
+        }
 
-  const time = performance.now();
-  const delta = ( time - prevTime ) / 1000;
+        // Update box positions
+        for(var i=0; i<boxes.length; i++){
+            boxMeshes[i].position.copy(boxes[i].position);
+            boxMeshes[i].quaternion.copy(boxes[i].quaternion);
+        }
+    }
 
-  drawOverlays(time, delta)
-
-  // animated transform
-  /*
-  This value is set soon before rendering so the physics step will not
-  have a chance to overwrite with the default value.
-  */
-  if (findMesh("Torus"))
-  {
-    meshes[findMesh("Torus")].rotation.y = time/1000;
-  }
-
-  render();
-  stats.update();
-  prevTime = time;
-}
-
-
-function render() {
-
-  if (controls.update)
-    controls.update( clock.getDelta() );
-
-  renderer.render( scene, camera );
-  
-}
-
-function onPointerDown( event ) {
-
-  onDownPosition.x = event.clientX;
-  onDownPosition.y = event.clientY;
+    controls.update( Date.now() - time );
+    renderer.render( scene, camera );
+    time = Date.now();
 
 }
 
-function onPointerUp() {
-
-  onUpPosition.x = event.clientX;
-  onUpPosition.y = event.clientY;
-
-  if ( onDownPosition.distanceTo( onUpPosition ) === 0 ) transformControl.detach();
-
+var ballShape = new CANNON.Sphere(0.2);
+var ballGeometry = new THREE.SphereGeometry(ballShape.radius, 32, 32);
+var shootDirection = new THREE.Vector3();
+var shootVelo = 15;
+var projector = new THREE.Projector();
+function getShootDir(targetVec){
+    var vector = targetVec;
+    targetVec.set(0,0,1);
+    projector.unprojectVector(vector, camera);
+    var ray = new THREE.Ray(playerBody.position, vector.sub(playerBody.position).normalize() );
+    targetVec.copy(ray.direction);
 }
 
-function onPointerMove( event ) {
+window.addEventListener("click",function(e){
+    if(controls.enabled==true){
+        var x = playerBody.position.x;
+        var y = playerBody.position.y;
+        var z = playerBody.position.z;
+        var ballBody = new CANNON.Body({ mass: 1 });
+        ballBody.addShape(ballShape);
+        var ballMesh = new THREE.Mesh( ballGeometry, material );
+        world.addBody(ballBody);
+        scene.add(ballMesh);
+        ballMesh.castShadow = true;
+        ballMesh.receiveShadow = true;
+        balls.push(ballBody);
+        ballMeshes.push(ballMesh);
+        getShootDir(shootDirection);
+        ballBody.velocity.set(  shootDirection.x * shootVelo,
+                                shootDirection.y * shootVelo,
+                                shootDirection.z * shootVelo);
 
-  pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-  pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+        // Move the ball outside the player sphere
+        x += shootDirection.x * (sphereShape.radius*1.02 + ballShape.radius);
+        y += shootDirection.y * (sphereShape.radius*1.02 + ballShape.radius);
+        z += shootDirection.z * (sphereShape.radius*1.02 + ballShape.radius);
+        ballBody.position.set(x,y,z);
+        ballMesh.position.set(x,y,z);
+    }
+});
 
-  // useful for clickable objects:
-  //raycaster.setFromCamera( pointer, camera );
+function generateTexture(w, h, pixfunc) {
+    const canvas = document.createElement( 'canvas' );
+    canvas.width = w;
+    canvas.height = h;
+
+    const context = canvas.getContext( '2d' );
+    const image = context.getImageData( 0, 0, w, h );
+
+    for ( let i = 0, j = 0, l = image.data.length; i < l; i += 4, j ++ ) {
+        var color = pixfunc(~~(i/4) % w, ~~((i/4) / w))
+        image.data[ i ] = color[0];
+        image.data[ i + 1 ] = color[1];
+        image.data[ i + 2 ] = color[2];
+        image.data[ i + 3 ] = color[3];
+    }
+
+    context.putImageData( image, 0, 0 );
+
+    var tex = new THREE.Texture( canvas );
+    tex.needsUpdate = true;
+    return tex;
+}
+
+function getStandardMaterial(texture)
+{
+    var mat = new THREE.MeshBasicMaterial({ 
+        map: texture,
+    })
+
+    return mat
+}
+
+function getTriggerMaterial()
+{
+    var opacity = 40
+    var texture = checkerboard([0, 200, 0, opacity], [200, 200, 0, opacity], 50)
+    var mat = new THREE.MeshBasicMaterial({ 
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide
+    })
+
+    return mat
+}
+
+function prism(x0, y0, z0, x1, y1, z1, texture)
+{
+    const material = getStandardMaterial(texture);
+
+    var halfExtents = new CANNON.Vec3((x1-x0)/2, (y1-y0)/2, (z1-z0)/2);
+    var boxShape = new CANNON.Box(halfExtents);
+    var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
+    
+    var boxBody = new CANNON.Body({ mass: 5, type: CANNON.Body.STATIC });
+    boxBody.addShape(boxShape);
+    var boxMesh = new THREE.Mesh(boxGeometry, material);
+    world.addBody(boxBody);
+    scene.add(boxMesh);
+    
+    var x = (x0+x1)/2;
+    var y = (y0+y1)/2;
+    var z = (z0+z1)/2;
+    boxBody.position.set(x, y, z);
+    boxMesh.position.set(x, y, z);
+
+    boxMesh.castShadow = true;
+    boxMesh.receiveShadow = true;
+
+    boxes.push(boxBody);
+    boxMeshes.push(boxMesh);
+
+    return boxMesh
+}
+
+function trigger(x0, y0, z0, x1, y1, z1, callback)
+{
+    const material = getTriggerMaterial();
+
+    var halfExtents = new CANNON.Vec3((x1-x0)/2, (y1-y0)/2, (z1-z0)/2);
+    var boxShape = new CANNON.Box(halfExtents);
+    var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
+    
+    var boxBody = new CANNON.Body({ mass: 5, type: CANNON.Body.STATIC });
+    boxBody.addShape(boxShape);
+    boxBody.collisionResponse = false;
+    var boxMesh = new THREE.Mesh(boxGeometry, material);
+    world.addBody(boxBody);
+    scene.add(boxMesh);
+    
+    var x = (x0+x1)/2;
+    var y = (y0+y1)/2;
+    var z = (z0+z1)/2;
+    boxBody.position.set(x, y, z);
+    boxMesh.position.set(x, y, z);
+
+    boxMesh.castShadow = true;
+    boxMesh.receiveShadow = true;
+
+    boxes.push(boxBody);
+    boxMeshes.push(boxMesh);
+
+    return boxMesh
+}
+
+function interactive(x, y, z, texture)
+{
+    const material = getStandardMaterial(texture);
+
+    var halfExtents = new CANNON.Vec3(.5, .5, .5);
+    var boxShape = new CANNON.Box(halfExtents);
+    var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
+    
+    var boxBody = new CANNON.Body({ mass: 5 });
+    boxBody.addShape(boxShape);
+    var boxMesh = new THREE.Mesh(boxGeometry, material);
+    world.addBody(boxBody);
+    scene.add(boxMesh);
+    
+    boxBody.position.set(x, y, z);
+    boxMesh.position.set(x, y, z);
+
+    boxMesh.castShadow = true;
+    boxMesh.receiveShadow = true;
+
+    boxes.push(boxBody);
+    boxMeshes.push(boxMesh);
+
+    return boxMesh
+}
+
+function solidcolor(color)
+{
+  return generateTexture(4, 4, (x,y)=>color)
+}
+
+function stripes(color0, color1, size, traverseDir)
+{
+  if (!traverseDir) traverseDir = [1,1]
+  return generateTexture(1024, 1024, (x,y)=>[color0, color1][~~((traverseDir[0]*x+traverseDir[1]*y)/size)%2])
+}
+
+function checkerboard(color0, color1, size)
+{
+  return generateTexture(1024, 1024, (x,y)=>[color0, color1][(~~(x/size)+~~(y/size))%2])
+}
+
+function player(x,y,z,lookX,lookY,lookZ)
+{
+    lookX = lookX || 0
+    lookY = lookY || 0
+    lookZ = lookZ || -1
+    playerBody.position.set(x,y,z)
+    controls.setDirection(lookX, lookY, lookZ)
 }
