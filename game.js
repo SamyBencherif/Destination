@@ -4,7 +4,7 @@
 var ground = prism(
   -10, -10, -10, 
   10, 0, 10, 
-  checkerboard([120, 120, 120, 255], [0, 0, 0, 255], 128) 
+  checkerboard([200, 200, 200, 255], [0, 0, 0, 255], 128) 
 )
 
 // create solid floating cubes
