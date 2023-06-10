@@ -2,10 +2,11 @@
 
 int main(void)
 {
-  const int screenWidth = 500;
-  const int screenHeight = 500;
+  const int width = GetScreenWidth();
+  const int height = GetScreenHeight();
 
-  InitWindow(screenWidth, screenHeight, "game");
+  InitWindow(width, height, "game");
+  SetWindowState(FLAG_FULLSCREEN_MODE);
 
   SetTargetFPS(60);
   while (!WindowShouldClose())
