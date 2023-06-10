@@ -15,5 +15,5 @@ Screenshot from [82e8c22](https://github.com/SamyBencherif/3gw/commit/82e8c22d22
 
 ## Extended requirements
 
-- Common game mechanics (E to interact/pick up, Trigger zones, 3D Audio)
+- Common game mechanics (E to interact/pick up, trigger zones, 3D audio)
 - Common technical features (pause menu, saves, graphics settings, cheat console)
