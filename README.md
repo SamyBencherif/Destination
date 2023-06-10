@@ -7,6 +7,6 @@
 1. Basic FP Controller
 1. Build on Pinephone
 1. Test multi-key input
-1. Integrate Bullet physics
+1. Integrate Bullet/ODE physics
 1. Refine FPC as needed (jump)
 1. Implement 3gw (prisms, textures, triggers)
