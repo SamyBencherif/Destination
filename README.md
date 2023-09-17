@@ -11,7 +11,7 @@
 1. Refine FPC as needed (jump) ✅
 1. Implement 3gw (prisms, textures, triggers) ❌ (electing not to maintain a spec, just implementing game contents and peripherals)
 
-# Preboot reboot
+## Preboot reboot
 
 Now on 2023 Sep 17th, I'm not using the Pinephone anymore. But I've continued with Raylib a fair bit, adding my own physics and player controller.
 
