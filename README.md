@@ -10,3 +10,9 @@
 1. Integrate Bullet/ODE physics
 1. Refine FPC as needed (jump)
 1. Implement 3gw (prisms, textures, triggers)
+
+Now on 2023 Sep 17th, I'm not using the Pinephone anymore. But I've continued with Raylib a fair bit, adding my own physics and player controller.
+
+This branch will be updated to contain a mostly empty world with a first person controller.
+
+![image](https://github.com/SamyBencherif/3gw/assets/10871454/26137425-0b73-4118-a81e-96be45b0fb49)
