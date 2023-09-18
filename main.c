@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if defined(PLATFORM_WEB)
+    #include <emscripten/emscripten.h>
+#endif
+
 Camera camera = { 0 };
 bool paused = false;
 Vector2 look = {0., 0.};
@@ -17,6 +21,8 @@ Vector3 forward = {0, 0, 0}; // player's forward direction
 Vector3 world_pos;
 Model world;
 Texture2D world_tex;
+
+bool SHOULD_EXIT = false;
 
 void player_move(float x, float z)
 {
@@ -208,6 +214,41 @@ bool draw_pause_menu()
   return IsKeyPressed(KEY_X);
 }
 
+void update(void)
+{
+  if (IsKeyPressed(KEY_ESCAPE)) { 
+    paused = !paused;
+    if (paused) 
+      EnableCursor();
+    else 
+      DisableCursor();
+  }
+
+  BeginDrawing();
+  ClearBackground(RAYWHITE);
+  BeginMode3D(camera);
+
+  // Draw cube
+  for (int x=-10; x<11; x++)
+    for (int z=-10; z<11; z++)
+    {
+      Vector3 position = {10*x, 0, 10*z};
+      Color color = {200, 40, 40, 255};
+      DrawCube(position, 3, 1, 3, color); 
+    }
+
+  if (!paused) {
+    first_person_controller();
+  }
+
+  EndMode3D();
+
+  // draws pause menu, and possibly breaks out of program
+  if (paused && draw_pause_menu()) SHOULD_EXIT = true;
+
+  EndDrawing();
+}
+
 int main(void)
 {
   srandom(0x0);
@@ -234,43 +275,17 @@ int main(void)
   camera.fovy = 80.0f;
   camera.projection = CAMERA_PERSPECTIVE;
 
-  SetTargetFPS(60);
   DisableCursor();
 
-  while (!WindowShouldClose())
+#if defined(PLATFORM_WEB)
+  emscripten_set_main_loop(update, 0, 1);
+#else
+  SetTargetFPS(60);
+  while (!(WindowShouldClose() || SHOULD_EXIT))
   {
-    if (IsKeyPressed(KEY_ESCAPE)) { 
-      paused = !paused;
-      if (paused) 
-        EnableCursor();
-      else 
-        DisableCursor();
-    }
-
-    BeginDrawing();
-    ClearBackground(RAYWHITE);
-    BeginMode3D(camera);
-
-    // Draw cube
-    for (int x=-10; x<11; x++)
-      for (int z=-10; z<11; z++)
-      {
-        Vector3 position = {10*x, 0, 10*z};
-        Color color = {200, 40, 40, 255};
-        DrawCube(position, 3, 1, 3, color); 
-      }
-
-    if (!paused) {
-      first_person_controller();
-    }
-
-    EndMode3D();
-
-    // draws pause menu, and possibly breaks out of program
-    if (paused && draw_pause_menu()) break;
-
-    EndDrawing();
+    update();
   }
+#endif
 
   CloseWindow();
   CloseAudioDevice();

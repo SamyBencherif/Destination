@@ -26,3 +26,4 @@ mac:
 #     This requires emscripten to be installed
 #     https://emscripten.org/docs/getting_started/downloads.html
 web:
+	emcc -o game.html main.c -Os -Wall libraylib.a -Iinclude -Llibraylib-a -s USE_GLFW=3 --shell-file shell.html -DPLATFORM_WEB
