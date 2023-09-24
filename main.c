@@ -5,6 +5,8 @@
 #include <rlgl.h>
 #include <raymath.h>
 
+float game_time = 0;
+
 #include "player.c"
 #include "pause.c"
 
@@ -13,9 +15,12 @@
 
 void update(void)
 {
-  pause_update();
+  if (IsKeyPressed(KEY_ESCAPE)) { 
+    pause_toggle();
+  }
   if (!paused) {
     first_person_controller();
+    game_time += GetFrameTime();
   }
 
   BeginDrawing();
@@ -26,8 +31,10 @@ void update(void)
 
   EndMode3D();
 
-  // draws pause menu, and possibly breaks out of program
-  if (paused && draw_pause_menu()) exit(0);
+  // 2D Drawing Mode
+  if (paused) draw_pause_menu();
+
+  // End 2D Drawing Mode
 
   EndDrawing();
 }

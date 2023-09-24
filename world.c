@@ -1,7 +1,7 @@
 
 void world()
 {
-  float t = GetTime();
+  float t = game_time;
   // Draw cube
   for (int x=-10; x<11; x++)
     for (int z=-10; z<11; z++)
