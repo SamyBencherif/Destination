@@ -34,6 +34,27 @@ void update(void)
 
   // 2D Drawing Mode
   if (paused) draw_pause_menu();
+  else 
+  {
+    // draw 3d crosshair
+    float size = 10;
+    Color color = BLACK;
+    color.a = 190;
+    DrawLine(GetScreenWidth()/2-size, GetScreenHeight()/2, GetScreenWidth()/2+size, GetScreenHeight()/2, color); 
+    DrawLine(GetScreenWidth()/2, GetScreenHeight()/2-size, GetScreenWidth()/2, GetScreenHeight()/2+size, color); 
+
+    DrawSphere((Vector3){0,0,0}, 20, YELLOW); 
+    // show line selection
+    if (SHOW_FLOORPLAN)
+    {
+      for (int i=0; i<fp_line_count; i++)
+      {
+        Vector3 n = nearest(camera.target, fp_lines[i]);
+        //DrawSphere(n, .1, YELLOW); 
+      }
+    }
+
+  }
 
   // End 2D Drawing Mode
 
@@ -43,7 +64,7 @@ void update(void)
 int main(void)
 {
   srandom(0x0);
-  SetTraceLogLevel(LOG_ERROR);
+  //SetTraceLogLevel(LOG_ERROR);
 
   int width = GetScreenWidth();
   int height = GetScreenHeight();
@@ -70,8 +91,8 @@ int main(void)
 
   SetTargetFPS(60);
 
-  // initialize First Person Controller
-  fpc_init();
+  player_init();
+  world_init();
 
   while (!(WindowShouldClose()))
   {

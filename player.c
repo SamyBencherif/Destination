@@ -1,8 +1,13 @@
 Camera camera = { 0 };
 Vector2 look = {0., 0.};
 bool mouse_ready = false;
+
+#define PLAYER_HEIGHT 15
 #define JUMP_HEIGHT 6
 #define JUMP_DURATION .5
+
+#define NOCLIP true
+
 float timer_jump = 0;
 Vector3 forward = {0, 0, 0}; // player's forward direction
 
@@ -32,7 +37,7 @@ void player_jump()
   else timer_jump = 0;
 
   // let's call this 'stylized jumping' instead of physically based
-  camera.position.y = 5 + sin(timer_jump*PI/JUMP_DURATION) * JUMP_HEIGHT;
+  camera.position.y = PLAYER_HEIGHT + sin(timer_jump*PI/JUMP_DURATION) * JUMP_HEIGHT;
   camera.target.y = camera.position.y + forward.y;
 }
 
@@ -73,7 +78,7 @@ Vector3 nearest(Vector3 pos, Line wall)
   return result;
 }
 
-void fpc_init()
+void player_init()
 {
   int box_size = 50;
 
@@ -161,8 +166,22 @@ void first_person_controller()
   if (md.x != 0 | md.y != 0)
     mouse_ready = true;
 
+  if (!NOCLIP)
   player_jump();
+  else
+  {
+    if (IsKeyDown(KEY_SPACE))
+      camera.position.y += .3;
+    if (IsKeyDown(KEY_LEFT_SHIFT))
+      camera.position.y -= .3;
 
+    camera.target.x = camera.position.x + forward.x;
+    camera.target.y = camera.position.y + forward.y;
+    camera.target.z = camera.position.z + forward.z;
+
+  }
+
+  if (!NOCLIP)
   for (int i=0; i<fp_line_count; i++)
   {
     Vector3 I = nearest(camera.position, fp_lines[i]);
