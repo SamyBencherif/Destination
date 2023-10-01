@@ -7,10 +7,11 @@
 
 float game_time = 0;
 
+#include "graphics.c"
+
 #include "player.c"
 #include "pause.c"
 
-#include "graphics.c"
 #include "world.c"
 
 void update(void)
@@ -68,6 +69,10 @@ int main(void)
   DisableCursor();
 
   SetTargetFPS(60);
+
+  // initialize First Person Controller
+  fpc_init();
+
   while (!(WindowShouldClose()))
   {
     update();

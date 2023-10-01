@@ -6,6 +6,17 @@ bool mouse_ready = false;
 float timer_jump = 0;
 Vector3 forward = {0, 0, 0}; // player's forward direction
 
+#define SHOW_FLOORPLAN true
+#define FP_LINE_SIZE 256
+int fp_line_count = 0;
+typedef struct Line {
+  int x1;
+  int z1;
+  int x2;
+  int z2;
+} Line;
+Line fp_lines[FP_LINE_SIZE];
+
 void player_move(float x, float z)
 {
   camera.position.x += x;
@@ -31,6 +42,35 @@ void player_look(float x, float y)
   float pitch_clamp = PI/2-.0001;
   if (look.y < -pitch_clamp) look.y = -pitch_clamp;
   if (look.y > pitch_clamp) look.y = pitch_clamp;
+}
+
+void fpc_init()
+{
+  int box_size = 50;
+
+  fp_lines[fp_line_count].x1 = -box_size; 
+  fp_lines[fp_line_count].z1 = -box_size; 
+  fp_lines[fp_line_count].x2 = -box_size; 
+  fp_lines[fp_line_count].z2 = box_size; 
+  fp_line_count++;
+
+  fp_lines[fp_line_count].x1 = -box_size; 
+  fp_lines[fp_line_count].z1 = box_size; 
+  fp_lines[fp_line_count].x2 = box_size; 
+  fp_lines[fp_line_count].z2 = box_size; 
+  fp_line_count++;
+
+  fp_lines[fp_line_count].x1 = box_size; 
+  fp_lines[fp_line_count].z1 = box_size; 
+  fp_lines[fp_line_count].x2 = box_size; 
+  fp_lines[fp_line_count].z2 = -box_size; 
+  fp_line_count++;
+
+  fp_lines[fp_line_count].x1 = box_size; 
+  fp_lines[fp_line_count].z1 = -box_size; 
+  fp_lines[fp_line_count].x2 = -box_size; 
+  fp_lines[fp_line_count].z2 = -box_size; 
+  fp_line_count++;
 }
 
 void first_person_controller()
