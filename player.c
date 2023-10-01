@@ -6,6 +6,8 @@ bool mouse_ready = false;
 float timer_jump = 0;
 Vector3 forward = {0, 0, 0}; // player's forward direction
 
+float player_radius = 1;
+
 #define SHOW_FLOORPLAN true
 #define FP_LINE_SIZE 256
 int fp_line_count = 0;
@@ -42,6 +44,33 @@ void player_look(float x, float y)
   float pitch_clamp = PI/2-.0001;
   if (look.y < -pitch_clamp) look.y = -pitch_clamp;
   if (look.y > pitch_clamp) look.y = pitch_clamp;
+}
+
+// ported from CALICO main.js intersects
+Vector3 nearest(Vector3 pos, Line wall)
+{
+  // This is a two dimensional function that applies to the XZ plane.
+  // given a specific wall and a pos, it tells you the nearest point to pos
+  // on the line of wall.
+  // 
+  // the point is returned in the XZ fields of the return value
+  // the Y field is set to the parametrization parameter, t.
+  // it is in the range [0, 1] when the point rests on the wall
+
+  float w0 = wall.x1; float w1 = wall.z1; float w2 = wall.x2; float w3 = wall.z2;
+  float px = pos.x; float py = pos.z;
+
+  Vector2 wtop = {px-w0, py-w1};
+  Vector2 wtow = {w2-w0, w3-w1};
+  float wtowM = sqrt(wtow.x*wtow.x + wtow.y*wtow.y);
+  wtow.x /= wtowM;
+  wtow.y /= wtowM;
+
+  float t = (wtop.x*wtow.x + wtop.y*wtow.y)/wtowM;
+
+  Vector3 result = {w0+(w2-w0)*t, t, w1+(w3-w1)*t};
+
+  return result;
 }
 
 void fpc_init()
@@ -133,4 +162,29 @@ void first_person_controller()
     mouse_ready = true;
 
   player_jump();
+
+  for (int i=0; i<fp_line_count; i++)
+  {
+    Vector3 I = nearest(camera.position, fp_lines[i]);
+    // I.x - x coord
+    // I.y - t value
+    // I.z - z coord
+
+    float mag = sqrt(pow(camera.position.x - I.x, 2) + pow(camera.position.z - I.z, 2));
+    if (0<=I.y && I.y<=1 && mag <= player_radius) 
+    {
+      Vector3 diff = Vector3Subtract(camera.position, I);
+      float diffM = sqrt(diff.x*diff.x + diff.z*diff.z);
+      diff.x /= diffM;
+      diff.z /= diffM;
+
+      Vector3 offset = Vector3Scale(diff, player_radius-diffM);
+      offset.y = 0;
+
+      camera.position = Vector3Add(camera.position, offset);
+      camera.target.x = camera.position.x + forward.x;
+      camera.target.y = camera.position.y + forward.y;
+      camera.target.z = camera.position.z + forward.z;
+    }
+  }
 }
