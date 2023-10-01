@@ -2,6 +2,8 @@
 Model world_model;
 Texture2D world_tex;
 
+int line_edit_index = -1;
+
 void world_init()
 {
   world_model = LoadModel("resources/worlds/demo_w001_stairs.obj");
@@ -61,6 +63,7 @@ void world()
     int nearest_index = 0;
     Vector3 nearest_vector = nearest(camera.target, fp_lines[0]);
     float nearest_t = nearest_vector.y;
+    nearest_vector.y = 0;
     for (int i=1; i<fp_line_count; i++)
     {
   
@@ -81,6 +84,49 @@ void world()
     }
     if (0 <= nearest_t && nearest_t <= 1)
       DrawSphere(nearest_vector, .5, YELLOW); 
+
+    if (IsKeyPressed(KEY_E)) 
+    {
+      if (line_edit_index == -1)
+      {
+        line_edit_index = 2*nearest_index;
+
+        // if nearest_vector is closer to x2,z2 then make line_edit_index odd
+        Vector3 x1z1; Vector3 x2z2;
+
+        x1z1.x = fp_lines[nearest_index].x1;
+        x1z1.z = fp_lines[nearest_index].z1;
+        x1z1.y = 0;
+
+        x2z2.x = fp_lines[nearest_index].x2;
+        x2z2.z = fp_lines[nearest_index].z2;
+        x2z2.y = 0;
+
+        if (Vector3Length(Vector3Subtract(nearest_vector, x2z2)) < Vector3Length(Vector3Subtract(nearest_vector, x1z1)))
+          line_edit_index++;
+      }
+      else
+        line_edit_index = -1;
+    }
+
+    // modify line coordinates
+    if (line_edit_index != -1)
+    {
+      Vector3 cursor3d = Vector3Subtract(camera.target, camera.position);
+      cursor3d = Vector3Scale(cursor3d, 5);
+      cursor3d = Vector3Add(camera.position, cursor3d);
+
+      if (line_edit_index % 2 == 1)
+      {
+        fp_lines[line_edit_index/2].x2 = cursor3d.x;
+        fp_lines[line_edit_index/2].z2 = cursor3d.z;
+      }
+      else
+      {
+        fp_lines[line_edit_index/2].x1 = cursor3d.x;
+        fp_lines[line_edit_index/2].z1 = cursor3d.z;
+      }
+    }
 
   }
 }
