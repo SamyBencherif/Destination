@@ -1,0 +1,20 @@
+# Quick explanation of the floor plan format.
+# Lines beginning with '#' are skipped.
+# The file begins with a number of lines
+4,
+# Each line is specified by four comma separated values
+# These lines exist on the XZ plane and cannot be crossed without noclip
+#x1,z1,x2,z2
+-50,-50,-50,50,
+-50,50,50,50,
+50,50,50,-50,
+50,-50,-50,-50,
+# The heightmap is determined using a series of prisms defined by four top coordinates
+# first the number of prisms
+1
+# then four x,y,z coords per prism
+0,0,0,
+10,0,0,
+0,20,10,
+0,20,10
+# the plane at Y=0 is given
