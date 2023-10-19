@@ -3,7 +3,7 @@ var sphereShape, playerBody, world, physicsMaterial, walls=[], balls=[], ballMes
 
 var camera, scene, renderer;
 var geometry, material, mesh;
-var controls,time = Date.now();
+var controls, time = Date.now();
 
 var blocker = document.getElementById( 'blocker' );
 var instructions = document.getElementById( 'instructions' );
@@ -312,3 +312,12 @@ function player(x,y,z,lookX,lookY,lookZ)
     playerBody.position.set(x,y,z)
     controls.setDirection(lookX, lookY, lookZ)
 }
+
+document.body.addEventListener("keydown", (event)=>{
+  if (event.keyCode == 13)
+  {
+    console.log("escape")
+    controls.enabled = false
+    document.querySelector("#instructions").style.display = "block";
+  }
+});
