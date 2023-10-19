@@ -4,7 +4,7 @@
  * @author sbee / https://github.com/SamyBencherif
  */
 
-const look_speed = 0.0002;
+const look_speed = 0.002;
 
  var PointerLockControls = function ( camera, cannonBody ) {
 
