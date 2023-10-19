@@ -3,6 +3,9 @@
  * @author schteppe / https://github.com/schteppe
  * @author sbee / https://github.com/SamyBencherif
  */
+
+const look_speed = 0.002;
+
  var PointerLockControls = function ( camera, cannonBody ) {
 
     var eyeYPos = 2; // eyes are 2 meters above the ground
@@ -54,8 +57,8 @@
         var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
         var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
-        yawObject.rotation.y -= movementX * 0.002;
-        pitchObject.rotation.x -= movementY * 0.002;
+        yawObject.rotation.y -= movementX * look_speed;
+        pitchObject.rotation.x -= movementY * look_speed;
 
         pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, pitchObject.rotation.x ) );
     };
