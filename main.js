@@ -12,7 +12,9 @@ instructions.addEventListener('click', function (event){
   instructions.style.display = 'none';
 
   document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock;
-  document.body.requestPointerLock();
+  document.body.requestPointerLock({
+    unadjustedMovement: true
+  });
 
   controls.enabled = true;
 });
@@ -70,7 +72,7 @@ function init() {
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog( 0x000000, 0, 500 );
 
-    controls = new PointerLockControls( camera , playerBody );
+    controls = new PointerLockControls(camera , playerBody);
     scene.add( controls.getObject() );
 
     renderer = new THREE.WebGLRenderer();
@@ -109,8 +111,8 @@ function animate() {
         }
     }
 
-    controls.update( Date.now() - time );
-    renderer.render( scene, camera );
+    controls.update(Date.now() - time);
+    renderer.render(scene, camera);
     time = Date.now();
 
 }

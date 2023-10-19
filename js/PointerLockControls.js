@@ -4,7 +4,7 @@
  * @author sbee / https://github.com/SamyBencherif
  */
 
-const look_speed = 0.002;
+const look_speed = 0.0002;
 
  var PointerLockControls = function ( camera, cannonBody ) {
 
@@ -54,8 +54,8 @@ const look_speed = 0.002;
 
         if ( scope.enabled === false ) return;
 
-        var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-        var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+        var movementX = event.movementX;
+        var movementY = event.movementY;
 
         yawObject.rotation.y -= movementX * look_speed;
         pitchObject.rotation.x -= movementY * look_speed;
