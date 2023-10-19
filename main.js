@@ -313,11 +313,10 @@ function player(x,y,z,lookX,lookY,lookZ)
     controls.setDirection(lookX, lookY, lookZ)
 }
 
-document.body.addEventListener("keydown", (event)=>{
-  if (event.keyCode == 27)
+document.addEventListener("pointerlockchange", (event)=>{
+  if (!document.pointerLockElement)
   {
-    console.log("escape")
-    controls.enabled = false
+    controls.enabled = false;
     document.querySelector("#instructions").style.display = "block";
   }
 });
