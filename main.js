@@ -314,7 +314,7 @@ function player(x,y,z,lookX,lookY,lookZ)
 }
 
 document.body.addEventListener("keydown", (event)=>{
-  if (event.keyCode == 13)
+  if (event.keyCode == 27)
   {
     console.log("escape")
     controls.enabled = false
