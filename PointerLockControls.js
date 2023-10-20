@@ -8,16 +8,19 @@ const look_speed = 0.002;
 
  var PointerLockControls = function ( camera, cannonBody ) {
 
-    var eyeYPos = 2; // eyes are 2 meters above the ground
+    var eyeYPos = 2; // eyes are this many meters above the ground
     var velocityFactor = 0.2;
-    var jumpVelocity = 20;
+    var jumpVelocity = 10;
     var scope = this;
 
     var pitchObject = new THREE.Object3D();
     pitchObject.add( camera );
 
     var yawObject = new THREE.Object3D();
-    yawObject.position.y = 2;
+
+    yawObject.position.copy(cannonBody.position);
+    yawObject.position.y += eyeYPos;
+    
     yawObject.add( pitchObject );
 
     var quat = new THREE.Quaternion();
@@ -87,7 +90,7 @@ const look_speed = 0.002;
                 break;
 
             case 32: // space
-                if ( canJump === true ){
+                if (canJump){
                     velocity.y = jumpVelocity;
                 }
                 canJump = false;
@@ -190,5 +193,6 @@ const look_speed = 0.002;
         velocity.z += inputVelocity.z;
 
         yawObject.position.copy(cannonBody.position);
+        yawObject.position.y += eyeYPos;
     };
 };

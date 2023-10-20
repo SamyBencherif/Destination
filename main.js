@@ -5,10 +5,8 @@ var camera, scene, renderer;
 var geometry, material, mesh;
 var controls, time = Date.now();
 
-var menu = document.querySelector('.menu');
-
 function unpause(event) {
-  menu.style.display = 'none';
+    document.querySelector('#mainmenu').style.display = 'none';
 
   document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock;
   document.body.requestPointerLock({
@@ -319,7 +317,7 @@ function pause()
     if (!document.pointerLockElement)
     {
         controls.enabled = false;
-        document.querySelector(".menu").style.display = "block";
+        document.querySelector("#mainmenu").style.display = "block";
     }
 }
 
