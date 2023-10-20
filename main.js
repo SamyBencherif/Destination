@@ -41,7 +41,7 @@ function initCannon(){
     else
         world.solver = solver;
 
-    world.gravity.set(0,-30,0);
+    world.gravity.set(0,-60,0);
     world.broadphase = new CANNON.NaiveBroadphase();
 
     // Create a slippery material (friction coefficient = 0.0)
@@ -91,6 +91,11 @@ function onWindowResize() {
     renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
+function player_reset()
+{
+  player(spawn_x, spawn_y, spawn_z, spawn_lookX, spawn_lookY, spawn_lookZ);
+}
+
 var dt = 1/60;
 function animate() {
     requestAnimationFrame( animate );
@@ -107,6 +112,11 @@ function animate() {
         for(var i=0; i<boxes.length; i++){
             boxMeshes[i].position.copy(boxes[i].position);
             boxMeshes[i].quaternion.copy(boxes[i].quaternion);
+        }
+
+        if (playerBody.position.y < -100)
+        {
+          player_reset()
         }
     }
 
@@ -304,13 +314,24 @@ function checkerboard(color0, color1, size_x, size_y)
   return generateTexture(1024, 1024, (x,y)=>[color0, color1][(~~(x/size_x)+~~(y/size_y))%2])
 }
 
-function player(x,y,z,lookX,lookY,lookZ)
+var spawn_x, spawn_y, spawn_z, spawn_lookX, spawn_lookY, spawn_lookZ;
+function player(x, y, z, lookX, lookY, lookZ)
 {
     lookX = lookX || 0
     lookY = lookY || 0
     lookZ = lookZ || -1
     playerBody.position.set(x,y,z)
     controls.setDirection(lookX, lookY, lookZ)
+
+    spawn_x = x;
+    spawn_y = y;
+    spawn_z = z;
+    
+    spawn_lookX = lookX;
+    spawn_lookY = lookY;
+    spawn_lookZ = lookZ;
+
+    playerBody.velocity.set(0,0,0);
 }
 
 function pause()

@@ -9,8 +9,8 @@ const look_speed = 0.002;
  var PointerLockControls = function ( camera, cannonBody ) {
 
     var eyeYPos = 3; // eyes are this many meters above the ground
-    var velocityFactor = 1.4;
-    var jumpVelocity = 15;
+    var velocityFactor = 2.4;
+    var jumpVelocity = 30;
     const damping = .9;
     const airInfluence = .8;
 

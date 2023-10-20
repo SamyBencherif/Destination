@@ -1,17 +1,22 @@
 
 
-// create solid, textured ground surface
-var ground = prism(
-  -10, -10, -40, 
-  10, 0, 10, 
-  checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64) 
-)
+// create solid, textured ground surfaces
+prism(-10, -10, -60, 10, 0, 10, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
+prism(-40, -10, -60, -10, 0, -40, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
+prism(-100, -10, -60, -50, 0, -40, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
+prism(-120, -10, -60, -100, 0, 10, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
+
 
 // set player spawn point & look direction
 player(0, 1.3, 0, 0, 0, -1)
 
 // set sky color
 renderer.setClearColor( 0x49caef, 1 );
+
+// create arch
+prism(-8, 0, -20, -5, 14, -17, checkerboard([200, 190, 40, 255], [60, 20, 100, 255], 128, 64))
+prism(5, 0, -20, 8, 14, -17, checkerboard([200, 190, 40, 255], [60, 20, 100, 255], 128, 64))
+prism(-5, 11, -20, 5, 14, -17, checkerboard([200, 190, 40, 255], [60, 20, 100, 255], 128, 64))
 
 // create solid floating cubes
 //prism(5, 2, 5, 6, 3, 6, stripes([200, 0, 200, 255], [40, 0, 200, 255], 256))
