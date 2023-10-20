@@ -126,46 +126,32 @@ function animate() {
 
 }
 
-var ballShape = new CANNON.Sphere(0.2);
+var ballShape = new CANNON.Sphere(1);
 var ballGeometry = new THREE.SphereGeometry(ballShape.radius, 32, 32);
 var shootDirection = new THREE.Vector3();
-var shootVelo = 15;
+var shootVelocity = 15;
 var projector = new THREE.Projector();
-function getShootDir(targetVec){
-    var vector = targetVec;
-    targetVec.set(0,0,1);
-    projector.unprojectVector(vector, camera);
-    var ray = new THREE.Ray(playerBody.position, vector.sub(playerBody.position).normalize());
-    targetVec.copy(ray.direction);
+
+function createBall(x, y, z)
+{
+  var ballBody = new CANNON.Body({ mass: 1 });
+  var ballMesh = new THREE.Mesh( ballGeometry, material );
+
+  ballBody.addShape(ballShape);
+
+  world.addBody(ballBody);
+  scene.add(ballMesh);
+  
+  ballMesh.castShadow = true;
+  ballMesh.receiveShadow = true;
+  
+  balls.push(ballBody);
+  ballMeshes.push(ballMesh);
+
+  ballBody.velocity.set(0,0,0);
+  ballBody.position.set(x,y,z);
+  ballMesh.position.set(x,y,z);
 }
-
-window.addEventListener("click",function(e){
-    if(controls.enabled==true){
-        var x = playerBody.position.x;
-        var y = playerBody.position.y;
-        var z = playerBody.position.z;
-        var ballBody = new CANNON.Body({ mass: 1 });
-        ballBody.addShape(ballShape);
-        var ballMesh = new THREE.Mesh( ballGeometry, material );
-        world.addBody(ballBody);
-        scene.add(ballMesh);
-        ballMesh.castShadow = true;
-        ballMesh.receiveShadow = true;
-        balls.push(ballBody);
-        ballMeshes.push(ballMesh);
-        getShootDir(shootDirection);
-        ballBody.velocity.set(  shootDirection.x * shootVelo,
-                                shootDirection.y * shootVelo,
-                                shootDirection.z * shootVelo);
-
-        // Move the ball outside the player sphere
-        x += shootDirection.x * (sphereShape.radius*1.02 + ballShape.radius);
-        y += shootDirection.y * (sphereShape.radius*1.02 + ballShape.radius);
-        z += shootDirection.z * (sphereShape.radius*1.02 + ballShape.radius);
-        ballBody.position.set(x,y,z);
-        ballMesh.position.set(x,y,z);
-    }
-});
 
 function generateTexture(w, h, pixfunc) {
     const canvas = document.createElement( 'canvas' );
