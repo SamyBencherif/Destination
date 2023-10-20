@@ -5,11 +5,10 @@ var camera, scene, renderer;
 var geometry, material, mesh;
 var controls, time = Date.now();
 
-var blocker = document.getElementById( 'blocker' );
-var instructions = document.getElementById( 'instructions' );
+var menu = document.querySelector('.menu');
 
-instructions.addEventListener('click', function (event){
-  instructions.style.display = 'none';
+function unpause(event) {
+  menu.style.display = 'none';
 
   document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock;
   document.body.requestPointerLock({
@@ -17,7 +16,9 @@ instructions.addEventListener('click', function (event){
   });
 
   controls.enabled = true;
-});
+
+  event.stopPropagation();
+}
 
 initCannon();
 init();
@@ -313,10 +314,20 @@ function player(x,y,z,lookX,lookY,lookZ)
     controls.setDirection(lookX, lookY, lookZ)
 }
 
-document.addEventListener("pointerlockchange", (event)=>{
-  if (!document.pointerLockElement)
-  {
-    controls.enabled = false;
-    document.querySelector("#instructions").style.display = "block";
-  }
-});
+function pause()
+{
+    if (!document.pointerLockElement)
+    {
+        controls.enabled = false;
+        document.querySelector(".menu").style.display = "block";
+    }
+}
+
+document.addEventListener("pointerlockchange", pause);
+document.addEventListener("keydown", (event)=>{
+    if (event.key == "Escape")
+    {
+        // this happens when pointer lock is rejected and player presses escape
+        pause();
+    }
+})
