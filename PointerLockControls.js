@@ -8,9 +8,12 @@ const look_speed = 0.002;
 
  var PointerLockControls = function ( camera, cannonBody ) {
 
-    var eyeYPos = 2; // eyes are this many meters above the ground
-    var velocityFactor = 0.2;
-    var jumpVelocity = 10;
+    var eyeYPos = 3; // eyes are this many meters above the ground
+    var velocityFactor = 1.4;
+    var jumpVelocity = 15;
+    const damping = .9;
+    const airInfluence = .8;
+
     var scope = this;
 
     var pitchObject = new THREE.Object3D();
@@ -20,7 +23,7 @@ const look_speed = 0.002;
 
     yawObject.position.copy(cannonBody.position);
     yawObject.position.y += eyeYPos;
-    
+
     yawObject.add( pitchObject );
 
     var quat = new THREE.Quaternion();
@@ -189,8 +192,20 @@ const look_speed = 0.002;
         inputVelocity.applyQuaternion(quat);
 
         // Add to the object
-        velocity.x += inputVelocity.x;
-        velocity.z += inputVelocity.z;
+        if (canJump)
+        {
+            velocity.x += inputVelocity.x;
+            velocity.z += inputVelocity.z;
+        }
+        else
+        {
+            velocity.x += airInfluence * inputVelocity.x;
+            velocity.z += airInfluence * inputVelocity.z;
+        }
+
+        // classic damping
+        velocity.x = damping * velocity.x
+        velocity.z = damping * velocity.z
 
         yawObject.position.copy(cannonBody.position);
         yawObject.position.y += eyeYPos;

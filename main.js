@@ -41,7 +41,7 @@ function initCannon(){
     else
         world.solver = solver;
 
-    world.gravity.set(0,-20,0);
+    world.gravity.set(0,-30,0);
     world.broadphase = new CANNON.NaiveBroadphase();
 
     // Create a slippery material (friction coefficient = 0.0)
@@ -298,9 +298,10 @@ function stripes(color0, color1, size, traverseDir)
   return generateTexture(1024, 1024, (x,y)=>[color0, color1][~~((traverseDir[0]*x+traverseDir[1]*y)/size)%2])
 }
 
-function checkerboard(color0, color1, size)
+function checkerboard(color0, color1, size_x, size_y)
 {
-  return generateTexture(1024, 1024, (x,y)=>[color0, color1][(~~(x/size)+~~(y/size))%2])
+  size_y = size_y || size_x;
+  return generateTexture(1024, 1024, (x,y)=>[color0, color1][(~~(x/size_x)+~~(y/size_y))%2])
 }
 
 function player(x,y,z,lookX,lookY,lookZ)
