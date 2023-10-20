@@ -1,7 +1,22 @@
 
 
+function color_sum(A, B)
+{
+  return [A[0]+B[0], A[1]+B[1], A[2]+B[2], A[3]]
+}
+
+function color_mul(A, s)
+{
+  return [A[0]*s, A[1]*s, A[2]*s, A[3]*s]
+}
+
+function color_random()
+{
+  return [Math.random(), Math.random(), Math.random(), 255]
+}
+
 // create solid, textured ground surfaces
-prism(-10, -10, -60, 10, 0, 10, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
+prism(-10, -10, -60, 10, 0, 10, generateTexture(256, 256, (x,y)=>color_sum([20,140,30,255], color_mul(color_random(), 20))))
 prism(-40, -10, -60, -10, 0, -40, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
 prism(-100, -10, -60, -50, 0, -40, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
 prism(-120, -10, -60, -100, 0, 10, checkerboard([200, 190, 180, 255], [60, 20, 0, 255], 128, 64))
