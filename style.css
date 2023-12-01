@@ -51,3 +51,11 @@ body {
   cursor: pointer;
   user-select: none;
 }
+
+/* scene selection */
+
+#sceneselect
+{
+    /* default invisible */
+    display: none;
+}

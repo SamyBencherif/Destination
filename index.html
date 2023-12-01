@@ -16,12 +16,34 @@
             </div>
             <div class="buttons">
                 <div class="menubtn" onclick="unpause(event)">Play</div>
-                <div class="menubtn">Load Scene</div>
+                <div class="menubtn" onclick="loadscene_menu(event)">Load Scene</div>
                 <div class="menubtn">Settings</div>
             </div>
         </div>
 
+        <div class="menu" id="sceneselect">
+            <div class="title">
+                Untitled Game &gt; Load Scene
+            </div>
+            <div class="buttons">
+                <div class="menubtn" onclick="loadscene_back(event)">Back</div>
+            </div>
+            <div class="scenebuttons">
+                <div class="menubtn" onclick="reset(); scene1_load(); unpause();">scene1</div>
+                <div class="menubtn" onclick="reset(); scene2_load(); unpause();">scene2</div>
+            </div>
+        </div>
+
+        <!-- Load Destination API used by each scene -->
         <script src="main.js"></script>
-        <script src="game.js"></script>
+
+        <!-- Include reference to all scenes -->
+        <script src="scene1.js"></script>
+        <script src="scene2.js"></script>
+
+        <!-- Only load scene1 to start -->
+        <script>
+        scene1_load();
+        </script>
     </body>
 </html>

@@ -1,28 +1,78 @@
 
-var sphereShape, playerBody, world, physicsMaterial, walls=[], balls=[], ballMeshes=[], boxes=[], boxMeshes=[];
+var sphereShape, playerBody, world, physicsMaterial;
+var balls=[], ballMeshes=[], boxes=[], boxMeshes=[];
 
 var camera, scene, renderer;
 var geometry, material, mesh;
 var controls, time = Date.now();
 
-function unpause(event) {
-    document.querySelector('#mainmenu').style.display = 'none';
+var ballShape = new CANNON.Sphere(1);
+var ballGeometry = new THREE.SphereGeometry(ballShape.radius, 32, 32);
 
-  document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock;
-  document.body.requestPointerLock({
-    unadjustedMovement: true
-  });
+function unpause(event) 
+{
+    document.querySelectorAll('.menu').forEach((el)=>el.style.display = 'none');
+    document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock;
+    document.body.requestPointerLock({unadjustedMovement: true});
 
-  controls.enabled = true;
+    controls.enabled = true;
 
-  event.stopPropagation();
+    if (event)
+        event.stopPropagation();
 }
 
-initCannon();
-init();
-animate();
+function loadscene_menu(event) 
+{   
+    // show scene selection menu
+    document.querySelector("#mainmenu").style.display = "none";
+    document.querySelector("#sceneselect").style.display = "initial";
+}
 
-function initCannon(){
+function loadscene_back(event)
+{
+    document.querySelector("#sceneselect").style.display = "none";
+    document.querySelector("#mainmenu").style.display = "initial";
+}
+
+// called before loading a scene, prepares rendering and physics
+// called only once at instantiation of runtime
+// to load other scenes, use reset, then load
+function init()
+{
+    initCannon();
+    initTHREE();
+    animate();
+}
+init()
+
+function reset()
+{
+    // clear both world (physics) and scene (rendering) to prepare for a new world
+    // TODO: rename variables world and scene to better show their role in the system
+
+    // clear all Three.js objects from renderer
+    scene.children = [];
+    // clear our memory model of them as well
+    boxMeshes = [];
+    ballMeshes = [];
+
+    // the collection of Cannon objects is not accessible through the API
+    // so we remove physics objects one by one
+    for (var box of boxes)
+        world.removeBody(box)
+    for (var ball of balls)
+        world.removeBody(ball)
+    // clear memory model
+    boxes = [];
+    balls = [];
+
+    // note that the player body is never removed
+    // we need to re-add it to the rendering scene 
+    scene.add( controls.getObject() );
+}
+
+function initCannon()
+{
     // Setup our world
     world = new CANNON.World();
     world.quatNormalizeSkip = 0;
@@ -54,7 +104,7 @@ function initCannon(){
     // We must add the contact materials to the world
     world.addContactMaterial(physicsContactMaterial);
 
-    // Create a sphere
+    // Create the player's physics body (a sphere)
     var mass = 5, radius = 1.3;
     sphereShape = new CANNON.Sphere(radius);
     playerBody = new CANNON.Body({ mass: mass });
@@ -64,8 +114,8 @@ function initCannon(){
     world.addBody(playerBody);
 }
 
-function init() {
-
+function initTHREE() 
+{
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
     scene = new THREE.Scene();
@@ -85,7 +135,8 @@ function init() {
     window.addEventListener( 'resize', onWindowResize, false );
 }
 
-function onWindowResize() {
+function onWindowResize() 
+{
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize( window.innerWidth, window.innerHeight );
@@ -97,18 +148,19 @@ function player_reset()
 }
 
 var dt = 1/60;
-function animate() {
+function animate() 
+{
     requestAnimationFrame( animate );
     if(controls.enabled){
         world.step(dt);
 
-        // Update ball positions
+        // Copy ball positions from physics to renderer
         for(var i=0; i<balls.length; i++){
             ballMeshes[i].position.copy(balls[i].position);
             ballMeshes[i].quaternion.copy(balls[i].quaternion);
         }
 
-        // Update box positions
+        // Copy box positions from physics to renderer
         for(var i=0; i<boxes.length; i++){
             boxMeshes[i].position.copy(boxes[i].position);
             boxMeshes[i].quaternion.copy(boxes[i].quaternion);
@@ -125,12 +177,6 @@ function animate() {
     time = Date.now();
 
 }
-
-var ballShape = new CANNON.Sphere(1);
-var ballGeometry = new THREE.SphereGeometry(ballShape.radius, 32, 32);
-var shootDirection = new THREE.Vector3();
-var shootVelocity = 15;
-var projector = new THREE.Projector();
 
 function createBall(x, y, z)
 {
@@ -153,7 +199,8 @@ function createBall(x, y, z)
   ballMesh.position.set(x,y,z);
 }
 
-function generateTexture(w, h, pixfunc) {
+function generateTexture(w, h, pixfunc) 
+{
     const canvas = document.createElement( 'canvas' );
     canvas.width = w;
     canvas.height = h;
@@ -187,6 +234,7 @@ function getStandardMaterial(texture)
 
 function getTriggerMaterial()
 {
+    // TODO: make invisible for released games
     var opacity = 40
     var texture = checkerboard([0, 200, 0, opacity], [200, 200, 0, opacity], 50)
     var mat = new THREE.MeshBasicMaterial({ 
