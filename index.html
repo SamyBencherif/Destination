@@ -17,7 +17,9 @@
             <div class="buttons">
                 <div class="menubtn" onclick="unpause(event)">Play</div>
                 <div class="menubtn" onclick="loadscene_menu(event)">Load Scene</div>
-                <div class="menubtn">Settings</div>
+
+                <!-- TODO: include choices of resolution -->
+                <!-- <div class="menubtn">Settings</div> -->
             </div>
         </div>
 
@@ -31,6 +33,7 @@
             <div class="scenebuttons">
                 <div class="menubtn" onclick="reset(); scene1_load(); unpause();">scene1</div>
                 <div class="menubtn" onclick="reset(); scene2_load(); unpause();">scene2</div>
+                <div class="menubtn" onclick="reset(); scene3_load(); unpause();">scene3</div>
             </div>
         </div>
 
@@ -40,10 +43,11 @@
         <!-- Include reference to all scenes -->
         <script src="scene1.js"></script>
         <script src="scene2.js"></script>
+        <script src="scene3.js"></script>
 
-        <!-- Only load scene1 to start -->
+        <!-- Only load scene3 to start -->
         <script>
-        scene1_load();
+        scene3_load();
         </script>
     </body>
 </html>
