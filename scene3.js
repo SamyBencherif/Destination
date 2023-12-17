@@ -133,6 +133,10 @@ function scene3_load()
     prism(-ground_size-0.01, -10, -ground_size-15, 
           ground_size,  0.01, ground_size-15, generateTexture(256, 256, (x,y)=>color_sum([200,150,20,255], color_mul(color_random(), 3))))
 
+
+    // place interactive cube
+    interactive_cube(-10, 0, -20, 3, generateTexture(128, 128, (x,y)=>[200, 50, 30, 255]))
+      
     // set player spawn point & look direction
     player(0, 1.3, -15, 0, 0, 1)
 

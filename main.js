@@ -9,8 +9,17 @@ var controls, time = Date.now();
 var ballShape = new CANNON.Sphere(1);
 var ballGeometry = new THREE.SphereGeometry(ballShape.radius, 32, 32);
 
+var play_first_click = true;
+
 function unpause(event) 
 {
+    if (play_first_click)
+    {
+        scene3_load(); 
+        document.querySelector(".menu").style.background = "rgba(0,0,0,.5)";
+        play_first_click =  false
+    }
+
     document.querySelectorAll('.menu').forEach((el)=>el.style.display = 'none');
     document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock;
     document.body.requestPointerLock({unadjustedMovement: true});
@@ -166,10 +175,22 @@ function animate()
             boxMeshes[i].quaternion.copy(boxes[i].quaternion);
         }
 
+        // reset player if they fall off the world
         if (playerBody.position.y < -100)
         {
           player_reset()
         }
+
+        // use THREE to raycast interactive boxes
+
+        // var lookDirection = new THREE.Vector3();
+        // controls.getDirection(lookDirection); // output is saved to lookDirection
+        // const raycaster = new THREE.Raycaster(camera.position, lookDirection);
+        // const intersects = raycaster.intersectObjects( scene.children );
+        // for ( let i = 0; i < intersects.length; i ++ ) {
+        //     // highlight object in front of camera
+        //     intersects[ i ].object.material = getStandardMaterial(generateTexture(1, 1, (x,y)=>[255,255,255,255]))
+        // }
     }
 
     controls.update(Date.now() - time);
@@ -305,11 +326,11 @@ function trigger(x0, y0, z0, x1, y1, z1, callback)
     return boxMesh
 }
 
-function interactive(x, y, z, texture)
+function interactive_cube(x, y, z, size, texture)
 {
     const material = getStandardMaterial(texture);
 
-    var halfExtents = new CANNON.Vec3(.5, .5, .5);
+    var halfExtents = new CANNON.Vec3(.5 * size, .5 * size, .5 * size);
     var boxShape = new CANNON.Box(halfExtents);
     var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
     
