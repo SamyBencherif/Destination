@@ -15,7 +15,9 @@ function unpause(event)
 {
     if (play_first_click)
     {
+        // load default scene
         scene3_load(); 
+        
         document.querySelector(".menu").style.background = "rgba(0,0,0,.5)";
         play_first_click =  false
     }
